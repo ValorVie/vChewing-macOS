@@ -87,6 +87,10 @@ extension SessionProtocol {
   /// 注意：必須在 IMK 的 commitComposition 函式當中也間接或者直接執行這個處理。
   public func commit(text: String, clearDisplayBeforeCommit: Bool) {
     guard !text.isEmpty else { return }
+    let rankingReceipt = inputHandler.flatMap {
+      $0.candidateSelectionLearning.takeCommit(text: text, assembler: $0.assembler)
+    }
+    let originalText = text
     // WeChat 相容所需。
     if clearDisplayBeforeCommit {
       clearInlineDisplay()
@@ -106,6 +110,9 @@ extension SessionProtocol {
     func doCommit(_ theBuffer: String) {
       if let ctl = clientProxy {
         ctl.clientTextInsertion(with: theBuffer, replacementRange: replacementRange())
+        rankingReceipt?.confirm(insertedUnchanged: ctl.hasClient() && !theBuffer.isEmpty && theBuffer == originalText)
+      } else {
+        rankingReceipt?.confirm(insertedUnchanged: false)
       }
     }
 

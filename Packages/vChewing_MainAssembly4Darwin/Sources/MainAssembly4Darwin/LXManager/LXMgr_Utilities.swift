@@ -106,6 +106,14 @@ extension LXMgr {
 
   // MARK: - 使用者片語檔案專用目錄的合規性檢查
 
+  /// 候選窗統計沿用 POM 的預設資料目錄，但使用獨立且繁簡分離的檔案。
+  public static func candidateRankingDataURL(_ mode: Shared.InputMode) -> URL? {
+    guard mode != .imeModeNULL else { return nil }
+    let suffix = mode == .imeModeCHT ? "cht" : "chs"
+    return perceptionOverrideModelDataURL(mode).deletingLastPathComponent()
+      .appendingPathComponent("vChewing_candidate-ranking-\(suffix).json")
+  }
+
   /// 判斷「指定的使用者資料目錄」是否實質等同於「未指定」。
   /// AppProperty 初次初始化時會把空字串預設值寫入 prefs，使「從未手動指定過目錄」看起來
   /// 像「指定了空路徑」；空字串經 `ensureTrailingSlash()` 補尾斜槓後會變成 "/"。

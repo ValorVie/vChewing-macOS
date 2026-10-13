@@ -61,13 +61,17 @@ extension LXAssembly {
     // 這句需要留著，不然無法被 package 外界存取。
     public init(
       isCHS: Bool = false,
-      pomDataURL: URL? = nil
+      pomDataURL: URL? = nil,
+      candidateRankingDataURL: URL? = nil
     ) {
       self.isCHS = isCHS
       self.lxPerceptor = LXPerceptor(dataURL: pomDataURL)
+      self.candidateRanking = CandidateRankingStore(dataURL: candidateRankingDataURL)
     }
 
     // MARK: Public
+
+    public let candidateRanking: CandidateRankingStore
 
     public struct Config: Hashable {
       /// 如果設定為 nil 的話，則不產生任何詞頻資料。

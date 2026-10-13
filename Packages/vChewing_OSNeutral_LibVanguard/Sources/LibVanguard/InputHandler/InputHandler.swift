@@ -75,6 +75,7 @@ public final class InputHandler: InputHandlerProtocol {
   public var furiousConfig = FuriousTypingConfig() // 狂拼模式之執行期狀態
   public var composer: Composer = .init() // 注拼槽
   public var assembler: Assembler // 組字器
+  public let candidateSelectionLearning = CandidateSelectionLearning()
 
   public var currentLM: LXAssembly.LXFacade {
     didSet {

@@ -50,6 +50,7 @@ public protocol InputHandlerProtocol: AnyObject {
   var furiousConfig: FuriousTypingConfig { get set } // 狂拼模式之執行期狀態
   var composer: Tekkon.Composer { get set } // 注拼槽
   var assembler: Homa.Assembler { get set } // 組字器
+  var candidateSelectionLearning: CandidateSelectionLearning { get }
 }
 
 // MARK: - InputHandlerProtocol 便利存取器
@@ -239,6 +240,7 @@ extension InputHandlerProtocol {
   public var keySeparator: String { assembler.separator }
 
   public func clear() {
+    candidateSelectionLearning.clear()
     clearComposerAndCalligrapher()
     // 閂滯旗標不隨 `clear()` 清除：`switchState(.ofCommitting)` 亦會呼叫本函式，
     // 而閂滯於英打時每一顆 ASCII 按鍵都即刻遞交、也就都會走一次 `clear()`。
@@ -328,6 +330,15 @@ extension InputHandlerProtocol {
           && $0.1.current == theCandidate.value
       })
     var overrideTaskResult = false
+    defer {
+      if overrideTaskResult, explicitlyChosen, isCandidateRankingEnabled,
+         isStandardRankingCandidate(theCandidate) {
+        candidateSelectionLearning.record(
+          theCandidate, at: preservedCursorPosition, assembler: assembler,
+          store: currentLM.candidateRanking
+        )
+      }
+    }
     if pomSuggestion != nil {
       // 強制 retokenization 並用 withSpecified 覆寫
       overrideTaskResult = assembler.overrideCandidate(
@@ -794,6 +805,14 @@ extension InputHandlerProtocol {
       }
     }
 
+    if !fixOrder, !prefs.useFixedCandidateOrderOnSelection, isCandidateRankingEnabled {
+      let slots = arrCandidates.indices.filter { isStandardRankingCandidate(arrCandidates[$0]) }
+      let ranked = currentLM.candidateRanking.ranked(
+        slots.map { arrCandidates[$0] },
+        includingSingleCharacters: !prefs.enforceETenDOSCandidateSequence
+      )
+      for (slot, pair) in zip(slots, ranked) { arrCandidates[slot] = pair }
+    }
     return arrCandidates.map { ($0.keyArray, $0.value) }
   }
 
@@ -1148,6 +1167,7 @@ extension InputHandlerProtocol {
     invalidateFuriousTrail() // 溢出遞交涉及組字器結構變更：狂拼 trail 失效。
     // 回頭在這裡插上對 Steam 的 Client Identifier 的要求。
     var textToCommit = ""
+    var rankingReceipts: [CandidateSelectionLearning.Receipt] = []
     while assembler.length > compositorWidthLimit {
       var delta = assembler.length - compositorWidthLimit
       let node = assembler.assembledSentence[0]
@@ -1159,12 +1179,14 @@ extension InputHandlerProtocol {
         textToCommit += node.asCandidatePair.value.map(\.description)[0 ..< delta].joined()
       }
       let newCursor = max(assembler.cursor - delta, 0)
+      rankingReceipts.append(candidateSelectionLearning.consumePrefix(readingCount: delta, assembler: assembler))
       assembler.cursor = 0
       if !node.isReadingMismatched { consolidateCursorContext(with: node.asCandidatePair) }
       // 唯音不支援 Bigram，所以無須考慮前後節點「是否需要鞏固」。
       for _ in 0 ..< delta { try? assembler.dropKey(direction: .front) }
       assembler.cursor = newCursor
     }
+    candidateSelectionLearning.enqueueOverflow(text: textToCommit, receipts: rankingReceipts)
     return textToCommit
   }
 }

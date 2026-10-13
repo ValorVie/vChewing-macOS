@@ -160,6 +160,7 @@ extension AppDelegate {
   }
 
   public func applicationWillTerminate(_: Notification) {
+    Shared.InputMode.validCases.forEach { $0.lexicon.candidateRanking.flushPendingWrites() }
     // 確保應用終止時停止所有已啟動的 security-scoped 資源
     BookmarkManager.shared.stopAllSecurityScopedAccesses()
   }

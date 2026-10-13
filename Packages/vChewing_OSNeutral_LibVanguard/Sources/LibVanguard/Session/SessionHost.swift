@@ -120,6 +120,8 @@ public final class SessionHost {
 
   /// 取得指定模式下的感知模型（POM）資料路徑。
   public var pomDataURL: (Shared.InputMode) -> URL? = { _ in nil }
+  /// 新候選排序統計獨立於 POM，未注入時只使用記憶體。
+  public var candidateRankingDataURL: (Shared.InputMode) -> URL? = { _ in nil }
   /// 候選字鍵驗證。
   public var validateCandidateKeys: (_ prefs: any PrefMgrProtocol, _ keys: String) -> String? =
     { _, _ in nil }
@@ -151,11 +153,13 @@ extension Shared.InputMode {
     init() {
       self.chs = LXAssembly.LXFacade(
         isCHS: true,
-        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHS)
+        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHS),
+        candidateRankingDataURL: SessionHost.shared.candidateRankingDataURL(.imeModeCHS)
       )
       self.cht = LXAssembly.LXFacade(
         isCHS: false,
-        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHT)
+        pomDataURL: SessionHost.shared.pomDataURL(.imeModeCHT),
+        candidateRankingDataURL: SessionHost.shared.candidateRankingDataURL(.imeModeCHT)
       )
     }
 

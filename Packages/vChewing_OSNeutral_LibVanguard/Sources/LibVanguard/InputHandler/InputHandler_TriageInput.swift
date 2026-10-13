@@ -9,6 +9,7 @@
 
 extension InputHandlerProtocol {
   public func triageInput(event input: InputSignalProtocol) -> Bool {
+    defer { candidateSelectionLearning.prune(assembler: assembler) }
     guard let session = session else { return false }
     var state: State { session.state }
     currentLM.syncPrefs()
@@ -105,7 +106,8 @@ extension InputHandlerProtocol {
         }
         return revolveCandidate(
           reverseOrder: input.isShiftHeld,
-          softRevolve: prefs.preferredRevolverForceLevel == 2
+          softRevolve: prefs.preferredRevolverForceLevel == 2,
+          explicitlyChosen: true
         )
       case .kDownArrow, .kLeftArrow, .kRightArrow, .kUpArrow:
         let revolution: Bool = input.isHoldingAny([.option, .shift]) && state.type == .ofInputting
@@ -116,14 +118,16 @@ extension InputHandlerProtocol {
           return revolution
             ? revolveCandidate(
               reverseOrder: true,
-              softRevolve: prefs.preferredRevolverForceLevel == 2
+              softRevolve: prefs.preferredRevolverForceLevel == 2,
+              explicitlyChosen: true
             )
             : handleClockKey()
         case (.kDownArrow, false), (.kRightArrow, true):
           return revolution
             ? revolveCandidate(
               reverseOrder: false,
-              softRevolve: prefs.preferredRevolverForceLevel == 2
+              softRevolve: prefs.preferredRevolverForceLevel == 2,
+              explicitlyChosen: true
             )
             : handleClockKey()
         default: break handleArrowKey // 該情況應該不會發生，因為上面都有處理過。
@@ -196,7 +200,8 @@ extension InputHandlerProtocol {
             // SPACE 啟動的輪替一律套用 soft revolve，避免毀掉鄰近已覆寫節點。
             return revolveCandidate(
               reverseOrder: input.isShiftHeld,
-              softRevolve: prefs.preferredRevolverForceLevel != 0
+              softRevolve: prefs.preferredRevolverForceLevel != 0,
+              explicitlyChosen: true
             )
           }
           // ★ P294：值 -1 之下 Shift+Space 之語義為「插入全形空白至內文組字區」，
@@ -206,7 +211,8 @@ extension InputHandlerProtocol {
              effectiveSpaceKeyBehaviorAgainstICB != -1 {
             return revolveCandidate(
               reverseOrder: input.isCommandHeld,
-              softRevolve: prefs.preferredRevolverForceLevel != 0
+              softRevolve: prefs.preferredRevolverForceLevel != 0,
+              explicitlyChosen: true
             )
           }
           if currentTypingMethod == .codePoint {
@@ -355,11 +361,13 @@ extension InputHandlerProtocol {
         switch (input.keyCode, isJISKeyboard?() ?? false) {
         case (30, true), (33, false): return revolveCandidate(
             reverseOrder: true,
-            softRevolve: prefs.preferredRevolverForceLevel == 2
+            softRevolve: prefs.preferredRevolverForceLevel == 2,
+            explicitlyChosen: true
           )
         case (30, false), (42, true): return revolveCandidate(
             reverseOrder: false,
-            softRevolve: prefs.preferredRevolverForceLevel == 2
+            softRevolve: prefs.preferredRevolverForceLevel == 2,
+            explicitlyChosen: true
           )
         default: break
         }

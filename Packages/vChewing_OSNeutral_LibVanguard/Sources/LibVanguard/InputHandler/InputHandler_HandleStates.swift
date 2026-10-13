@@ -1665,8 +1665,9 @@ extension InputHandlerProtocol {
   /// - Parameters:
   ///   - reverseOrder: 是否有控制輪替方向的修飾鍵輸入。
   ///   - softRevolve: 是否啟用 soft revolve（避免跨越鄰近已覆寫節點）。預設 false。
+  ///   - explicitlyChosen: 輪替是否來自使用者的明確選字事件。
   /// - Returns: 將按鍵行為「是否有處理掉」藉由 IMKInputSessionController 回報給 IMK。
-  func revolveCandidate(reverseOrder: Bool, softRevolve: Bool = false) -> Bool {
+  func revolveCandidate(reverseOrder: Bool, softRevolve: Bool = false, explicitlyChosen: Bool = false) -> Bool {
     guard let session = session else { return false }
     let state = session.state
     invalidateFuriousTrail() // 輪替為使用者顯式干涉：狂拼 trail 失效。
@@ -1689,6 +1690,7 @@ extension InputHandlerProtocol {
     typealias TooltipPayload = (value: String, current: Int, total: Int)
 
     let previousSentence = assembler.assembledSentence
+    let selectionCursor = actualNodeCursorPosition
     let shouldSkipInitialConsolidation: Bool = switch homaCandidateCursorType {
     case .placedFront: assembler.isCursorAtAssemblerEdge(direction: .front)
     case .placedRear: assembler.isCursorAtAssemblerEdge(direction: .rear)
@@ -1708,6 +1710,12 @@ extension InputHandlerProtocol {
       }
       if previousSentence.map(\.value) != assembler.assembledSentence.map(\.value) {
         tooltipPayload = (revolution.0.pair.value, revolution.current, revolution.total)
+        if explicitlyChosen, isCandidateRankingEnabled, isStandardRankingCandidate(revolution.0.pair) {
+          candidateSelectionLearning.record(
+            revolution.0.pair, at: selectionCursor, assembler: assembler,
+            store: currentLM.candidateRanking
+          )
+        }
       } else {
         errorCode = "040CDB2A"
       }
