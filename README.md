@@ -79,6 +79,8 @@
 
 ## 建置流程
 
+候選排序功能版的建置、備份、安裝與回復步驟，請見[候選排序功能版建置與安裝指南](BUILD-INSTALL.md)。
+
 安裝 Xcode 之後，請先配置 Xcode 允許其直接構建在專案所在的資料夾下的 build 資料夾內。步驟：
 ```
 「Xcode」->「Preferences...」->「Locations」；
