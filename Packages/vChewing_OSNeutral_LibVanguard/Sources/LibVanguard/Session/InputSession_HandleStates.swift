@@ -7,6 +7,14 @@ import Foundation
 // MARK: - 狀態調度 (State Handling)
 
 extension SessionProtocol {
+  /// 設定切換只刷新活躍組字；已開候選窗保留 snapshot，關窗產生 Inputting 時才套用新值。
+  public func refreshPersonalCandidatePreference(refreshComposition: Bool = true) {
+    guard let inputHandler else { return }
+    let changed = inputHandler.synchronizePersonalCandidatePreference()
+    guard changed, refreshComposition, state.type == .ofInputting else { return }
+    switchState(inputHandler.generateStateOfInputting())
+  }
+
   /// 覆寫 SessionCoreProtocol 的 debugLogCondition，
   /// 使用 Session 自身的 prefs 來判斷是否啟用 debug log。
   var debugLogCondition: Bool {
@@ -87,6 +95,7 @@ extension SessionProtocol {
   /// 注意：必須在 IMK 的 commitComposition 函式當中也間接或者直接執行這個處理。
   public func commit(text: String, clearDisplayBeforeCommit: Bool) {
     guard !text.isEmpty else { return }
+    inputHandler?.synchronizePersonalCandidatePreference()
     let rankingReceipt = inputHandler.flatMap {
       $0.candidateSelectionLearning.takeCommit(text: text, assembler: $0.assembler)
     }

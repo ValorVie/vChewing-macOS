@@ -117,6 +117,13 @@ extension SettingsPanesCocoa {
             fixWidth: contentWidth,
             prefUITab: .tabCandidates
           )
+          UserDef.kUsePersonalCandidatePreference.renderCocoa(
+            fixWidth: contentWidth,
+            prefUITab: .tabCandidates
+          ) { renderable in
+            renderable.currentControl?.target = self
+            renderable.currentControl?.action = #selector(self.personalCandidatePreferenceDidSet(_:))
+          }
           UserDef.kUseFixedCandidateOrderOnSelection.renderCocoa(
             fixWidth: contentWidth,
             prefUITab: .tabCandidates
@@ -157,6 +164,11 @@ extension SettingsPanesCocoa {
       let title = "i18n:Menu.EndOfIMKCandidateWindow".i18n
       let explanation = "i18n:InfoMessage.EndOfIMKCandidatesExplanation".i18n
       window.callAlert(title: title, text: explanation)
+    }
+
+    @IBAction
+    func personalCandidatePreferenceDidSet(_: NSControl) {
+      SettingsUIHost.shared.syncLMPrefs()
     }
 
     @IBAction

@@ -6,7 +6,7 @@ import Foundation
 import Homa
 import LexiconAssembly
 
-/// 只追蹤真正的手動選字；在客體收到完整結果前不修改歷史統計。
+/// 手選只在客體收到完整結果後學習；部分溢出結果另保護尚未遞交的尾端，不學習自動組字。
 public final class CandidateSelectionLearning {
   public init() {}
 
@@ -16,7 +16,7 @@ public final class CandidateSelectionLearning {
     func confirm(insertedUnchanged: Bool) {
       for (choice, count) in fragments {
         if !insertedUnchanged { choice.cancelled = true }
-        guard !choice.cancelled, !choice.learned else { continue }
+        guard choice.learnable, choice.epoch.isValid, !choice.cancelled, !choice.learned else { continue }
         choice.delivered += count
         guard choice.delivered == choice.pair.keyArray.count else { continue }
         choice.learned = true
@@ -26,7 +26,7 @@ public final class CandidateSelectionLearning {
   }
 
   func record(_ pair: Homa.CandidatePair, at cursor: Int, assembler: Homa.Assembler,
-              store: LXAssembly.CandidateRankingStore) {
+              store: LXAssembly.CandidateRankingStore, learnable: Bool = true) {
     prune(assembler: assembler)
     guard let hit = assembler.assembledSentence.findGram(at: cursor), hit.gram.asCandidatePair == pair,
           hit.range.upperBound <= assembler.length,
@@ -41,7 +41,8 @@ public final class CandidateSelectionLearning {
       $0.cancelled = true
       return true
     }
-    choices.append(Choice(pair: pair, nodeID: node.id, tokens: tokens, store: store))
+    choices.append(Choice(pair: pair, nodeID: node.id, tokens: tokens, store: store,
+                          learnable: learnable && learningEnabled, epoch: epoch))
   }
 
   func prune(assembler: Homa.Assembler) {
@@ -52,11 +53,66 @@ public final class CandidateSelectionLearning {
     }
   }
 
+  func protectedRanges(assembler: Homa.Assembler) -> [Range<Int>] {
+    var ranges = choices.compactMap { range(of: $0, assembler: assembler) }
+    var start = 0
+    // 刪除回補的手選殘片仍須保護，但不因此新增可學習的 Choice；只認目前組句中的存活節點。
+    for gram in assembler.assembledSentence {
+      let end = start + gram.segLength
+      defer { start = end }
+      guard gram.isExplicit, end <= assembler.length,
+            let node = assembler.segments[start][gram.segLength], node.isExplicitlyOverridden,
+            node.currentGram?.id == gram.gram.id else { continue }
+      ranges.append(start ..< end)
+    }
+    return ranges
+  }
+
+  /// 只使用已在軌格內的合法後綴；這是已遞交詞的尾端保全，不是新的手選或學習來源。
+  func protectOverflowSuffix(of pair: Homa.CandidatePair, after readingCount: Int,
+                             assembler: Homa.Assembler, store: LXAssembly.CandidateRankingStore) -> Bool {
+    let keys = Array(pair.keyArray.dropFirst(readingCount))
+    let values = Array(pair.value).dropFirst(readingCount).map(String.init)
+    guard !keys.isEmpty, keys.count == values.count else { return false }
+    var mirror: [FIUUID: Homa.NodeOverrideStatus] = [:]
+    func select(start: Int, keys: [String], value: String) -> Bool {
+      guard let node = assembler.segments[start][keys.count],
+            let index = node.grams.firstIndex(where: { $0.keyArray == keys && $0.current == value })
+      else { return false }
+      var status = node.overrideStatus
+      status.currentOverrideType = .withSpecified
+      status.overridingScore = 114_514
+      status.isExplicitlyOverridden = false
+      status.currentUnigramIndex = index
+      mirror[node.id] = status
+      return true
+    }
+    if !select(start: readingCount, keys: keys, value: values.joined()) {
+      mirror.removeAll()
+      for (offset, key) in keys.enumerated() {
+        guard select(start: readingCount + offset, keys: [key], value: values[offset]) else { return false }
+      }
+    }
+    record(pair, at: 0, assembler: assembler, store: store, learnable: false)
+    assembler.restoreFromNodeOverrideStatusMirror(mirror)
+    return true
+  }
+
   func clear() {
     choices.forEach { $0.cancelled = true }
     overflow.forEach { $0.fragments.forEach { $0.0.cancelled = true } }
     choices.removeAll()
     overflow.removeAll()
+  }
+
+  /// 只在總開關切換時撤銷舊 epoch；正常 clear/commit 不會撤銷已抽取的有效 receipt。
+  @discardableResult
+  func setLearningEnabled(_ enabled: Bool) -> Bool {
+    guard learningEnabled != enabled else { return false }
+    learningEnabled = enabled
+    epoch.isValid = false
+    epoch = Epoch(isValid: enabled)
+    return true
   }
 
   /// 必須在 overflow 的 dropKey 之前擷取證據，並保留未遞交尾端的節點身分。
@@ -151,17 +207,22 @@ public final class CandidateSelectionLearning {
   }
 
   fileprivate final class Choice {
-    init(pair: Homa.CandidatePair, nodeID: FIUUID, tokens: [FIUUID], store: LXAssembly.CandidateRankingStore) {
+    init(pair: Homa.CandidatePair, nodeID: FIUUID, tokens: [FIUUID], store: LXAssembly.CandidateRankingStore,
+         learnable: Bool, epoch: Epoch) {
       self.pair = pair
       self.nodeID = nodeID
       self.tokens = tokens
       self.store = store
-      self.order = store.nextSelectionOrder()
+      self.learnable = learnable
+      self.epoch = epoch
+      self.order = learnable ? store.nextSelectionOrder() : 0
     }
 
     let pair: Homa.CandidatePair
     let store: LXAssembly.CandidateRankingStore
     let order: UInt64
+    let learnable: Bool
+    let epoch: Epoch
     var nodeID: FIUUID?
     var tokens: [FIUUID]
     var delivered = 0
@@ -169,12 +230,23 @@ public final class CandidateSelectionLearning {
     var learned = false
   }
 
+  fileprivate final class Epoch {
+    init(isValid: Bool = true) { self.isValid = isValid }
+    var isValid: Bool
+  }
+
   private var choices: [Choice] = []
   private var overflow: [(text: String, fragments: [(Choice, Int)])] = []
+  private var epoch = Epoch()
+  private var learningEnabled = true
 }
 
 extension InputHandlerProtocol {
   var isCandidateRankingEnabled: Bool {
+    prefs.usePersonalCandidatePreference && isPersonalCandidatePreferenceModeEligible
+  }
+
+  var isPersonalCandidatePreferenceModeEligible: Bool {
     currentTypingMethod == .vChewingFactory && !prefs.useSCPCTypingMode
       && (typingMode == .bopomofoKeyblock || typingMode == .pinyinKeyblock)
       && (composer.isPinyinMode || !prefs.mixedAlphanumericalEnabled)

@@ -11,6 +11,11 @@ extension SettingsUIHost {
   /// 所需的宿主服務（LXMgr、SessionUI、AppDelegate、InputSession）注入。
   public static func wireUp() {
     let host = SettingsUIHost.shared
+    func refreshPersonalPreferences() {
+      for session in [InputSession.sessionEven, InputSession.sessionOdd] {
+        session.refreshPersonalCandidatePreference(refreshComposition: session === InputSession.current)
+      }
+    }
     // LXMgr 動作依賴。
     host.dataFolderPath = { LXMgr.dataFolderPath(isDefaultFolder: $0) }
     host.cassettePath = { LXMgr.cassettePath() }
@@ -21,7 +26,10 @@ extension SettingsUIHost {
     host.chkUserLMFilesExist = { LXMgr.chkUserLMFilesExist($0) }
     host.initUserLexicons = { LXMgr.initUserLexicons() }
     host.connectCoreDB = { LXMgr.connectCoreDB() }
-    host.syncLMPrefs = { LXMgr.syncLMPrefs() }
+    host.syncLMPrefs = {
+      LXMgr.syncLMPrefs()
+      refreshPersonalPreferences()
+    }
     host.loadUserPhraseReplacement = { LXMgr.loadUserPhraseReplacement() }
     host.loadCassetteData = { LXMgr.loadCassetteData() }
     host.resetCassettePath = { LXMgr.resetCassettePath() }
@@ -57,6 +65,7 @@ extension SettingsUIHost {
         LXMgr.loadUserAssociatesData()
       }
       LXMgr.syncLMPrefs()
+      refreshPersonalPreferences()
     }
     PrefMgr.shared.didAskForSyncingShiftKeyDetectorPrefs = {
       SessionUI.shared.resyncShiftKeyUpCheckerSettings()

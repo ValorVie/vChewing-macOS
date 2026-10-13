@@ -534,6 +534,7 @@ extension InputHandlerProtocol {
     furiousHighlightOverride = nil // 高亮覆寫僅供當拍消費（高亮預覽不走本函數）。
     if isConsideredEmptyForNow, !guarded { return State.ofAbortion() }
     restoreBackupCursor() // 只要叫了 Inputting 狀態，就盡可能還原游標備份。
+    applyPersonalCandidatePreference()
     var segHighlightedAt: Int?
     let handleAsCodePointInput = currentTypingMethod == .codePoint && !sansReading
     let handleAsRomanNumeralInput = currentTypingMethod == .romanNumerals && !sansReading
@@ -1668,6 +1669,7 @@ extension InputHandlerProtocol {
   ///   - explicitlyChosen: 輪替是否來自使用者的明確選字事件。
   /// - Returns: 將按鍵行為「是否有處理掉」藉由 IMKInputSessionController 回報給 IMK。
   func revolveCandidate(reverseOrder: Bool, softRevolve: Bool = false, explicitlyChosen: Bool = false) -> Bool {
+    synchronizePersonalCandidatePreference()
     guard let session = session else { return false }
     let state = session.state
     invalidateFuriousTrail() // 輪替為使用者顯式干涉：狂拼 trail 失效。
@@ -1710,7 +1712,7 @@ extension InputHandlerProtocol {
       }
       if previousSentence.map(\.value) != assembler.assembledSentence.map(\.value) {
         tooltipPayload = (revolution.0.pair.value, revolution.current, revolution.total)
-        if explicitlyChosen, isCandidateRankingEnabled, isStandardRankingCandidate(revolution.0.pair) {
+        if explicitlyChosen, isPersonalCandidatePreferenceModeEligible, isStandardRankingCandidate(revolution.0.pair) {
           candidateSelectionLearning.record(
             revolution.0.pair, at: selectionCursor, assembler: assembler,
             store: currentLM.candidateRanking

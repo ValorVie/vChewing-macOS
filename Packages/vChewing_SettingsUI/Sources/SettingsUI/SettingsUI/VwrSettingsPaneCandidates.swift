@@ -61,6 +61,9 @@
         Section {
           UserDef.kShowCodePointInCandidateUI.renderUI()
           UserDef.kShowReverseLookupInCandidateUI.renderUI()
+          UserDef.kUsePersonalCandidatePreference.renderUI {
+            SettingsUIHost.shared.syncLMPrefs()
+          }
           UserDef.kUseFixedCandidateOrderOnSelection.renderUI()
           UserDef.kConsolidateContextOnCandidateSelection.renderUI()
           UserDef.kCandidateNarrationToggleType.renderUI()

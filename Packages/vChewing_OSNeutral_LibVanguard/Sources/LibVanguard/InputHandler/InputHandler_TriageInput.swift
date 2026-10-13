@@ -13,6 +13,7 @@ extension InputHandlerProtocol {
     guard let session = session else { return false }
     var state: State { session.state }
     currentLM.syncPrefs()
+    synchronizePersonalCandidatePreference()
 
     // 狂拼固化：前方候選窗顯示中、按下「可能叫出選字窗」的鍵（Space／翻頁／候選導航
     // 方向鍵）時，先把前方投機讀音固化進組字器（投機→實體：只插聲調桶、不覆寫，

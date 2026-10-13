@@ -67,6 +67,7 @@ public final class MockInputHandler: @MainActor InputHandlerProtocol {
   public var composer: Tekkon.Composer = .init()
   public var assembler: Homa.Assembler
   public let candidateSelectionLearning = CandidateSelectionLearning()
+  public let personalCandidatePreference = PersonalCandidatePreference()
   public var isJISKeyboard: (() -> Bool)? = { false }
   public var narrator: (any SpeechNarratorProtocol)?
 

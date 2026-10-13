@@ -23,7 +23,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(testClientProxy.committedText == "世事")
     try openRankingComposition()
     #expect(rankingValues() == ["世事", "試試", "逝世"])
-    #expect(testHandler.assembler.assembledSentence.map(\.value).joined() == "試試")
+    #expect(testHandler.assembler.assembledSentence.map(\.value).joined() == "世事")
   }
 
   @Test("SS-CandidateRanking-002 Node identities survive shifts but not deletion and reinsertion")
@@ -419,6 +419,425 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(rankingCount("逝世") == 0)
   }
 
+  @Test("SS-PersonalPreference-021 A delivered manual word becomes preedit and Enter without opening candidates")
+  func test_SS_PersonalPreference_021_DefaultWord() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4g4")
+    #expect(testSession.state.type == .ofInputting)
+    #expect(testSession.state.displayedText == "逝世")
+    #expect(testHandler.assembler.assembledSentence.map(\.value).joined() == "逝世")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "逝世")
+    #expect(rankingCount("逝世") == 1)
+  }
+
+  @Test("SS-PersonalPreference-022 Recent single characters yield to a newly formed legal word")
+  func test_SS_PersonalPreference_022_SingleToWord() throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n世 ㄕˋ -1\n界 ㄐㄧㄝˋ -1\n世界 ㄕˋ-ㄐㄧㄝˋ -0.1\n")
+    })
+    typeSentenceOrCandidates("g4ru,4")
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["世界"])
+    testSession.switchState(.ofAbortion())
+    try openRankingComposition(keys: ["ㄕˋ"])
+    try selectRankingValue("世")
+    press(.dataEnterReturn)
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4")
+    #expect(testSession.state.displayedText == "世")
+    typeSentenceOrCandidates("ru,4")
+    #expect(testSession.state.displayedText == "世界")
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["世界"])
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "世界")
+  }
+
+  @Test("SS-PersonalPreference-023 Recent complete-reading word wins over an automatic POM override")
+  func test_SS_PersonalPreference_023_POMConflict() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    typeSentenceOrCandidates("g4")
+    injectPersonalPOM(value: "世事", cursor: 0)
+    typeSentenceOrCandidates("g4")
+    #expect(testSession.state.displayedText == "逝世")
+    #expect(testHandler.assembler.assembledSentence.map(\.value).joined() == "逝世")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "逝世")
+    #expect(rankingCount("逝世") == 1)
+  }
+
+  @Test("SS-PersonalPreference-024 A current manual word survives later typing and conflicting POM")
+  func test_SS_PersonalPreference_024_ManualProtection() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4g4")
+    _ = openCandidateWindow(cursor: 2)
+    try selectRankingValue("世事")
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    injectPersonalPOM(value: "逝世", cursor: 0)
+    typeSentenceOrCandidates("g4")
+    #expect(testSession.state.displayedText.hasPrefix("世事"))
+    #expect(testHandler.assembler.assembledSentence.first?.value == "世事")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText.hasPrefix("世事"))
+    #expect(rankingCount("世事") == 1)
+    #expect(rankingCount("逝世") == 1)
+  }
+
+  @Test("SS-PersonalPreference-025 Keyboard overflow extracts preferred text before dropping its readings")
+  func test_SS_PersonalPreference_025_DefaultOverflow() throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n逝 ㄕˋ -4\n世 ㄕˋ -4\n試試 ㄕˋ-ㄕˋ -1\n逝世 ㄕˋ-ㄕˋ -2\n世事 ㄕˋ-ㄕˋ -3\n")
+    })
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    testHandler.prefs.securityHardenedCompositionBuffer = true
+    for _ in 0 ..< 22 { typeSentenceOrCandidates("g4") }
+    #expect(testClientProxy.committedText == "逝世")
+    #expect(rankingCount("逝世") == 1)
+    testSession.switchState(.ofAbortion())
+  }
+
+  @Test("SS-PersonalPreference-026 Contextual word preference must not disappear into cheaper single characters")
+  func test_SS_PersonalPreference_026_ContextualBaseline() throws {
+    preparePersonalGrid(singleScore: -3, wordScore: -10, contextual: true)
+    typeSentenceOrCandidates("ru83g4g4")
+    let initial = testHandler.assembler.assembledSentence.map(\.value)
+    #expect(initial == ["甲", "試試"], "fixture path: \(initial)")
+    testHandler.currentLM.candidateRanking.recordCommittedCandidate(.init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "逝世"))
+    testSession.switchState(testHandler.generateStateOfInputting())
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["甲", "逝世"])
+    #expect(testSession.state.displayedText == "甲逝世")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "甲逝世")
+  }
+
+  @Test("SS-PersonalPreference-027 A learned word can be selected from the grid even outside the original path")
+  func test_SS_PersonalPreference_027_NonPathWord() throws {
+    preparePersonalGrid(singleScore: -1, wordScore: -3, contextual: false)
+    typeSentenceOrCandidates("g4g4")
+    let initial = testHandler.assembler.assembledSentence.map(\.value)
+    #expect(initial == ["試", "試"], "fixture path: \(initial)")
+    testHandler.currentLM.candidateRanking.recordCommittedCandidate(.init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "逝世"))
+    testSession.switchState(testHandler.generateStateOfInputting())
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["逝世"])
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "逝世")
+  }
+
+  @Test("SS-PersonalPreference-028 Overflow preserves a learned word whose suffix has no standalone gram")
+  func test_SS_PersonalPreference_028_OverflowWithoutSuffixGram() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    testHandler.prefs.securityHardenedCompositionBuffer = true
+    for _ in 0 ..< 22 { typeSentenceOrCandidates("g4") }
+    #expect(testClientProxy.committedText == "逝世")
+    #expect(testHandler.assembler.length == 20)
+    #expect(testSession.state.displayedText == String(repeating: "逝世", count: 10))
+    #expect(testHandler.assembler.actualKeys == Array(repeating: "ㄕˋ", count: 20))
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == String(repeating: "逝世", count: 11))
+    #expect(rankingCount("逝世") == 1)
+  }
+
+  @Test("SS-PersonalPreference-029 Recent word wins over a longer overlapping automatic POM node")
+  func test_SS_PersonalPreference_029_OverlappingPOM() throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n試試 ㄕˋ-ㄕˋ -1\n逝世 ㄕˋ-ㄕˋ -2\n世事 ㄕˋ-ㄕˋ -3\n試試試 ㄕˋ-ㄕˋ-ㄕˋ -4\n")
+    })
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    typeSentenceOrCandidates("g4g4")
+    injectPersonalPOM(value: "試試試", cursor: 1, keyArray: Array(repeating: "ㄕˋ", count: 3))
+    typeSentenceOrCandidates("g4")
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["逝世", "試"])
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "逝世試")
+  }
+
+  @Test("SS-PersonalPreference-030 The master switch defaults on and off/on retains history and readings")
+  func test_SS_PersonalPreference_030_MasterSwitch() throws {
+    #expect(UserDef(rawValue: "UsePersonalCandidatePreference")?.boolDefaultValue == true)
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4g4")
+    let cursor = testHandler.assembler.cursor
+    setPersonalPreference(false)
+    #expect(testSession.state.displayedText == "試試")
+    #expect(testHandler.assembler.cursor == cursor)
+    #expect(testHandler.assembler.actualKeys == ["ㄕˋ", "ㄕˋ"])
+    #expect(testClientProxy.committedText.isEmpty)
+    #expect(rankingCount("逝世") == 1)
+    setPersonalPreference(true)
+    #expect(testSession.state.displayedText == "逝世")
+    #expect(testHandler.assembler.cursor == cursor)
+    #expect(testClientProxy.committedText.isEmpty)
+  }
+
+  @Test("SS-PersonalPreference-031 Off does not learn manual choices and preserves a current manual word")
+  func test_SS_PersonalPreference_031_OffLearning() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    try openRankingComposition()
+    try selectRankingValue("世事")
+    setPersonalPreference(false)
+    #expect(testHandler.assembler.assembledSentence.map(\.value).joined() == "世事")
+    press(.dataEnterReturn)
+    #expect(rankingCount("世事") == 0)
+    try openRankingComposition()
+    #expect(rankingValues() == ["試試", "逝世", "世事"])
+    try selectRankingValue("世事")
+    press(.dataEnterReturn)
+    #expect(rankingCount("世事") == 0)
+    setPersonalPreference(true)
+    try openRankingComposition()
+    #expect(rankingValues().first == "逝世")
+  }
+
+  @Test("SS-PersonalPreference-032 Off/on invalidates an extracted receipt but normal clear does not")
+  func test_SS_PersonalPreference_032_ReceiptEpoch() throws {
+    prepareCandidateRankingData()
+    try openRankingComposition()
+    try selectRankingValue("世事")
+    let normal = try #require(testHandler.candidateSelectionLearning.takeCommit(text: "世事", assembler: testHandler.assembler))
+    testHandler.clear()
+    normal.confirm(insertedUnchanged: true)
+    #expect(rankingCount("世事") == 1)
+    try openRankingComposition()
+    try selectRankingValue("逝世")
+    let stale = try #require(testHandler.candidateSelectionLearning.takeCommit(text: "逝世", assembler: testHandler.assembler))
+    setPersonalPreference(false)
+    setPersonalPreference(true)
+    stale.confirm(insertedUnchanged: true)
+    #expect(rankingCount("逝世") == 0)
+    #expect(rankingCount("世事") == 1)
+  }
+
+  @Test("SS-PersonalPreference-033 Two production sessions observe the same master switch on their next input")
+  func test_SS_PersonalPreference_033_TwoSessions() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    let otherClient = MockClientProxy()
+    defer { withExtendedLifetime(otherClient) {} }
+    let other = InputSession(preallocated: (), manuallyAssignedClientProxy: otherClient)
+    let otherHandler = try #require(other.inputHandler)
+    otherHandler.currentLM = testHandler.currentLM
+    otherHandler.prefs = testHandler.prefs
+    other.prefs = testHandler.prefs
+    otherHandler.ensureKeyboardParser()
+    func typeOther(_ text: String) {
+      for character in text {
+        for event in KBEvent.KeyEventData(chars: String(character)).asPairedEvents {
+          let handled = other.handleEvent(event)
+          if event.type == .keyDown { #expect(handled) }
+        }
+      }
+    }
+    UserDefaults.current.set(false, forKey: "UsePersonalCandidatePreference")
+    typeSentenceOrCandidates("g4g4")
+    typeOther("g4g4")
+    #expect(testSession.state.displayedText == "試試")
+    #expect(other.state.displayedText == "試試")
+    UserDefaults.current.set(true, forKey: "UsePersonalCandidatePreference")
+    testSession.switchState(.ofAbortion())
+    other.switchState(.ofAbortion())
+    typeSentenceOrCandidates("g4g4")
+    typeOther("g4g4")
+    #expect(testSession.state.displayedText == "逝世")
+    #expect(other.state.displayedText == "逝世")
+  }
+
+  @Test("SS-PersonalPreference-034 Cancel and deletion invalidate manual learning while automatic words do not learn")
+  func test_SS_PersonalPreference_034_CancelAndDelete() throws {
+    prepareCandidateRankingData()
+    typeSentenceOrCandidates("g4g4")
+    #expect(testSession.state.displayedText == "試試")
+    press(.dataEnterReturn)
+    #expect(rankingCount("試試") == 0)
+    try commitRankingValue("逝世")
+    typeSentenceOrCandidates("g4g4")
+    testSession.switchState(.ofAbortion())
+    #expect(rankingCount("逝世") == 1)
+    typeSentenceOrCandidates("g4g4")
+    _ = openCandidateWindow(cursor: 2)
+    try selectRankingValue("世事")
+    press(.backspaceEvent)
+    typeSentenceOrCandidates("g4")
+    press(.dataEnterReturn)
+    #expect(rankingCount("世事") == 0)
+    #expect(rankingCount("逝世") == 1)
+  }
+
+  @Test("SS-PersonalPreference-035 Reading and script histories remain isolated, including normal pinyin")
+  func test_SS_PersonalPreference_035_ReadingAndScriptIsolation() throws {
+    prepareCandidateRankingData()
+    try commitRankingValue("逝世")
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n時 ㄕˊ -0.5\n試試 ㄕˋ-ㄕˋ -1\n逝世 ㄕˋ-ㄕˋ -2\n時事 ㄕˊ-ㄕˋ -1\n")
+    })
+    typeSentenceOrCandidates("g6g4")
+    #expect(testSession.state.displayedText == "時事")
+    testSession.switchState(.ofAbortion())
+    testHandler.prefs.pinyinTypingEnabled = true
+    testHandler.prefs.keyboardParser4Pinyin = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    typeSentenceOrCandidates("shi4shi4")
+    #expect(testSession.state.displayedText == "逝世")
+    testSession.switchState(.ofAbortion())
+    let traditional = testHandler.currentLM
+    testHandler.currentLM = LXAssembly.LXFacade(isCHS: true)
+    prepareCandidateRankingData()
+    typeSentenceOrCandidates("g4g4")
+    #expect(testSession.state.displayedText == "試試")
+    #expect(rankingCount("逝世") == 0)
+    testSession.switchState(.ofAbortion())
+    testHandler.currentLM = traditional
+    prepareCandidateRankingData()
+    typeSentenceOrCandidates("g4g4")
+    #expect(testSession.state.displayedText == "逝世")
+  }
+
+  @Test("SS-PersonalPreference-036 Window fixed-order settings do not disable single-character preedit preferences")
+  func test_SS_PersonalPreference_036_FixedWindowSettings() throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n世 ㄕˋ -1\n")
+    })
+    try openRankingComposition(keys: ["ㄕˋ"])
+    try selectRankingValue("世")
+    press(.dataEnterReturn)
+    testHandler.prefs.useFixedCandidateOrderOnSelection = true
+    testHandler.prefs.enforceETenDOSCandidateSequence = true
+    typeSentenceOrCandidates("g4")
+    #expect(testSession.state.displayedText == "世")
+    _ = openCandidateWindow()
+    #expect(testSession.state.candidates.map(\.value) == testHandler.generateArrayOfCandidates(fixOrder: true).map(\.value))
+  }
+
+  @Test("SS-PersonalPreference-037 A POM target starting outside a manual cursor still cannot overlap the manual word")
+  func test_SS_PersonalPreference_037_ManualPOMOverlap() throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n試試 ㄕˋ-ㄕˋ -1\n逝世 ㄕˋ-ㄕˋ -2\n世事 ㄕˋ-ㄕˋ -3\n試試試 ㄕˋ-ㄕˋ-ㄕˋ -4\n")
+    })
+    try commitRankingValue("逝世")
+    typeSentenceOrCandidates("g4g4")
+    _ = openCandidateWindow(cursor: 2)
+    try selectRankingValue("世事")
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    injectPersonalPOM(value: "試試試", cursor: 2, keyArray: Array(repeating: "ㄕˋ", count: 3))
+    typeSentenceOrCandidates("g4")
+    #expect(testHandler.assembler.assembledSentence.first?.value == "世事")
+    press(.dataEnterReturn)
+    #expect(rankingCount("世事") == 1)
+  }
+
+  @Test("SS-PersonalPreference-038 Toggling while a window is open preserves all nine numeric snapshot choices")
+  func test_SS_PersonalPreference_038_WindowSnapshot() throws {
+    prepareCandidateRankingData(includeSingleTrial: false)
+    testHandler.prefs.candidateKeys = "123456789"
+    testHandler.currentLM.syncPrefs()
+    try commitRankingValue("逝世")
+    for index in 0 ..< 9 {
+      try openRankingComposition()
+      let snapshot = testSession.state.candidates
+      try #require(snapshot.count >= 9)
+      UserDefaults.current.set(false, forKey: "UsePersonalCandidatePreference")
+      testSession.refreshPersonalCandidatePreference()
+      #expect(testSession.state.candidates.map(\.value) == snapshot.map(\.value))
+      UserDefaults.current.set(true, forKey: "UsePersonalCandidatePreference")
+      testSession.refreshPersonalCandidatePreference()
+      #expect(testSession.state.candidates.map(\.value) == snapshot.map(\.value))
+      let cursor = testHandler.actualNodeCursorPosition
+      press(KBEvent.KeyEventData(chars: String(index + 1)))
+      #expect(testHandler.assembler.assembledSentence.findGram(at: cursor)?.gram.asCandidatePair ==
+        Homa.CandidatePair(keyArray: snapshot[index].keyArray, value: snapshot[index].value))
+      testSession.switchState(.ofAbortion())
+    }
+  }
+
+  @Test("SS-PersonalPreference-039 Backspace preserves a manual remainder without learning it")
+  func test_SS_PersonalPreference_039_BackspaceManualRemainder() throws {
+    try checkManualRemainder(forward: false)
+  }
+
+  @Test("SS-PersonalPreference-040 ForwardDelete preserves a manual remainder without learning it")
+  func test_SS_PersonalPreference_040_ForwardDeleteManualRemainder() throws {
+    try checkManualRemainder(forward: true)
+  }
+
+  private func checkManualRemainder(forward: Bool) throws {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "試 ㄕˋ -0.5\n世 ㄕˋ -4\n事 ㄕˋ -4\n試試 ㄕˋ-ㄕˋ -0.9\n逝世 ㄕˋ-ㄕˋ -2\n世事 ㄕˋ-ㄕˋ -3\n")
+    })
+    testHandler.currentLM.syncPrefs()
+    let recent = Homa.CandidatePair(keyArray: ["ㄕˋ"], value: "試")
+    testHandler.currentLM.candidateRanking.recordCommittedCandidate(recent)
+    typeSentenceOrCandidates("g4g4")
+    _ = openCandidateWindow()
+    try selectRankingValue("世事")
+    #expect(testSession.state.displayedText == "世事")
+    testHandler.assembler.cursor = forward ? 0 : 2
+    press(forward ? .deleteForwardEvent : .backspaceEvent)
+    let remainder = forward ? "事" : "世"
+    #expect(testSession.state.displayedText == remainder)
+    #expect(testHandler.assembler.segments[0][1]?.isExplicitlyOverridden == true)
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == remainder)
+    #expect(rankingCount("世事") == 0)
+    #expect(testHandler.currentLM.candidateRanking.count(for: recent) == 1)
+    for value in ["世", "事"] {
+      #expect(testHandler.currentLM.candidateRanking.count(for: .init(keyArray: ["ㄕˋ"], value: value)) == 0)
+    }
+  }
+
+  private func setPersonalPreference(_ enabled: Bool) {
+    UserDefaults.current.set(enabled, forKey: "UsePersonalCandidatePreference")
+    testSession.refreshPersonalCandidatePreference()
+  }
+
+  private func injectPersonalPOM(value: String, cursor: Int, keyArray: [String] = ["ㄕˋ", "ㄕˋ"]) {
+    testHandler.currentLM.injectTestData(lxPerceptor: {
+      var suggestion = LXAssembly.OverrideSuggestion()
+      suggestion.candidates = [(keyArray: keyArray, value: value, probability: 0, previous: nil)]
+      suggestion.forceHighScoreOverride = true
+      suggestion.overrideCursor = cursor
+      $0.testInjectedSuggestion = suggestion
+    })
+  }
+
+  private func preparePersonalGrid(singleScore: Double, wordScore: Double, contextual: Bool) {
+    prepareCandidateRankingData()
+    testHandler.currentLM.injectTestData(userPhrases: {
+      $0.replaceData(textData: "甲 ㄐㄧㄚˇ -1\n試 ㄕˋ \(singleScore)\n試試 ㄕˋ-ㄕˋ \(wordScore)\n逝世 ㄕˋ-ㄕˋ \(wordScore - 1)\n")
+    })
+    testHandler.assembler = Homa.Assembler(gramQuerier: { query in
+      let keys = query.map(\.first)
+      switch keys {
+      case ["ㄐㄧㄚˇ"]: return [.init(keyArray: keys, value: "甲", score: -1)]
+      case ["ㄕˋ"]: return [.init(keyArray: keys, value: "試", score: singleScore)]
+      case ["ㄕˋ", "ㄕˋ"]:
+        var grams = [Homa.Gram(keyArray: keys, value: "試試", score: wordScore),
+                     Homa.Gram(keyArray: keys, value: "逝世", score: wordScore - 1)]
+        if contextual { grams.append(.init(keyArray: keys, current: "試試", previous: "甲", probability: -1)) }
+        return grams
+      default: return []
+      }
+    })
+  }
+
   private func prepareRankingRevolution() throws {
     prepareCandidateRankingData(includeSingleTrial: false)
     testHandler.currentLM.syncPrefs()
@@ -453,6 +872,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
   private func prepareCandidateRankingData(includeSingleTrial: Bool = true) {
     testSession.prefs = testHandler.prefs
     testHandler.prefs.useSCPCTypingMode = false
+    testHandler.prefs.pinyinTypingEnabled = false
     testHandler.prefs.useFixedCandidateOrderOnSelection = false
     testHandler.prefs.enforceETenDOSCandidateSequence = false
     testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = false

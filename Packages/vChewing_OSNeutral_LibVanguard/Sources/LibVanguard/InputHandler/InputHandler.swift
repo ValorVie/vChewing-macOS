@@ -76,6 +76,7 @@ public final class InputHandler: InputHandlerProtocol {
   public var composer: Composer = .init() // 注拼槽
   public var assembler: Assembler // 組字器
   public let candidateSelectionLearning = CandidateSelectionLearning()
+  public let personalCandidatePreference = PersonalCandidatePreference()
 
   public var currentLM: LXAssembly.LXFacade {
     didSet {

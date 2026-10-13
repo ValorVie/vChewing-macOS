@@ -7,7 +7,7 @@ import Homa
 import SwiftExtension
 
 extension LXAssembly {
-  /// 候選窗專用統計；不參與語言模型權重或 POM。
+  /// 個人選字統計；與 POM 分開保存，不修改詞庫的持久分數。
   public final class CandidateRankingStore: @unchecked Sendable {
     public init(dataURL: URL? = nil) {
       self.dataURL = dataURL
@@ -79,6 +79,10 @@ extension LXAssembly {
 
     public func count(for pair: Homa.CandidatePair) -> UInt64 {
       state.withLockRead { $0.groups[pair.keyArray]?.counts[pair.value] ?? 0 }
+    }
+
+    public func latestValue(for keyArray: [String]) -> String? {
+      state.withLockRead { $0.groups[keyArray]?.latest }
     }
 
     /// 只在完全相同 keyArray 的原有槽位間交換；沒有歷史的群組完全不動。

@@ -87,6 +87,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kInlineDumpPinyinInLieuOfZhuyin = "InlineDumpPinyinInLieuOfZhuyin"
   case kFetchSuggestionsFromPerceptionOverrideModel = "FetchSuggestionsFromPerceptionOverrideModel"
   case kUseFixedCandidateOrderOnSelection = "UseFixedCandidateOrderOnSelection"
+  case kUsePersonalCandidatePreference = "UsePersonalCandidatePreference"
   case kAutoCorrectReadingCombination = "AutoCorrectReadingCombination"
   case kReadingNarrationCoverage = "ReadingNarrationCoverage"
   case kAlsoConfirmAssociatedCandidatesByEnter = "AlsoConfirmAssociatedCandidatesByEnter"
@@ -721,6 +722,7 @@ extension UserDef {
     case .kInlineDumpPinyinInLieuOfZhuyin: return .bool(false)
     case .kFetchSuggestionsFromPerceptionOverrideModel: return .bool(true)
     case .kUseFixedCandidateOrderOnSelection: return .bool(false)
+    case .kUsePersonalCandidatePreference: return .bool(true)
     case .kAutoCorrectReadingCombination: return .bool(true)
     case .kReadingNarrationCoverage: return .integer(0)
     case .kAlsoConfirmAssociatedCandidatesByEnter: return .bool(false)
@@ -1172,6 +1174,10 @@ extension UserDef {
         userDef: self, shortTitle: "i18n:UserDef.kUseFixedCandidateOrderOnSelection.shortTitle",
         description: "i18n:UserDef.kUseFixedCandidateOrderOnSelection.description"
       )
+    case .kUsePersonalCandidatePreference: return .init(
+      userDef: self, shortTitle: "i18n:UserDef.kUsePersonalCandidatePreference.shortTitle",
+      description: "i18n:UserDef.kUsePersonalCandidatePreference.description"
+    )
     case .kAutoCorrectReadingCombination: return .init(
         userDef: self,
         shortTitle: "i18n:UserDef.kAutoCorrectReadingCombination.shortTitle",

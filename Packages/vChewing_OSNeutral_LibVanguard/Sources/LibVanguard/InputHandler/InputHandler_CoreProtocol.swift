@@ -51,6 +51,7 @@ public protocol InputHandlerProtocol: AnyObject {
   var composer: Tekkon.Composer { get set } // 注拼槽
   var assembler: Homa.Assembler { get set } // 組字器
   var candidateSelectionLearning: CandidateSelectionLearning { get }
+  var personalCandidatePreference: PersonalCandidatePreference { get }
 }
 
 // MARK: - InputHandlerProtocol 便利存取器
@@ -241,6 +242,7 @@ extension InputHandlerProtocol {
 
   public func clear() {
     candidateSelectionLearning.clear()
+    personalCandidatePreference.clear()
     clearComposerAndCalligrapher()
     // 閂滯旗標不隨 `clear()` 清除：`switchState(.ofCommitting)` 亦會呼叫本函式，
     // 而閂滯於英打時每一顆 ASCII 按鍵都即刻遞交、也就都會走一次 `clear()`。
@@ -315,6 +317,7 @@ extension InputHandlerProtocol {
     skipObservation: Bool = false,
     explicitlyChosen: Bool = false
   ) {
+    synchronizePersonalCandidatePreference()
     invalidateFuriousTrail() // 選字為使用者顯式干涉：狂拼 trail 失效。
     let theCandidate: Homa.CandidatePair = .init(candidate)
     let preservedSentenceBeforeConsolidation = assembler.assembledSentence
@@ -331,7 +334,7 @@ extension InputHandlerProtocol {
       })
     var overrideTaskResult = false
     defer {
-      if overrideTaskResult, explicitlyChosen, isCandidateRankingEnabled,
+      if overrideTaskResult, explicitlyChosen, isPersonalCandidatePreferenceModeEligible,
          isStandardRankingCandidate(theCandidate) {
         candidateSelectionLearning.record(
           theCandidate, at: preservedCursorPosition, assembler: assembler,
@@ -934,6 +937,18 @@ extension InputHandlerProtocol {
     let appendables = filterPOMAppendables(from: suggestion, rawCandidates: rawCandidates)
     arrResult.append(contentsOf: appendables)
     if apply {
+      let protectedRanges = candidateSelectionLearning.protectedRanges(assembler: assembler)
+      let pomCursor = suggestion.overrideCursor ?? actualNodeCursorPosition
+      let overlapsManual = assembler.segments.enumerated().contains { start, segment in
+        segment.contains { length, node in
+          let range = start ..< start + length
+          return range.contains(pomCursor) && protectedRanges.contains(where: { $0.overlaps(range) })
+            && node.grams.contains(where: { $0.current == suggestion.candidates.last?.value })
+        }
+      }
+      if overlapsManual || protectedRanges.contains(where: { $0.contains(pomCursor) }) {
+        return arrResult.stableSort { $0.1.probability > $1.1.probability }
+      }
       // P162／P181：POM 記憶對組句的影響已移交「統計路徑＋override 兜底」體系——n-gram 餵入
       // 隨 `kFetchSuggestionsFromPerceptionOverrideModel` 主開關（P182 起已無獨立開關）。
       // 此處為 contextual 記憶的自動套用處理：
@@ -1165,23 +1180,33 @@ extension InputHandlerProtocol {
           session.clientMitigationLevel >= 2
     else { return "" }
     invalidateFuriousTrail() // 溢出遞交涉及組字器結構變更：狂拼 trail 失效。
+    applyPersonalCandidatePreference()
     // 回頭在這裡插上對 Steam 的 Client Identifier 的要求。
     var textToCommit = ""
     var rankingReceipts: [CandidateSelectionLearning.Receipt] = []
     while assembler.length > compositorWidthLimit {
       var delta = assembler.length - compositorWidthLimit
       let node = assembler.assembledSentence[0]
+      var protectedAutoSuffix = false
       if node.isReadingMismatched {
         delta = node.keyArray.count
         textToCommit += node.asCandidatePair.value
       } else {
         delta = min(delta, node.keyArray.count)
+        if delta < node.keyArray.count,
+           personalCandidatePreference.owns(assembler.segments[0][node.keyArray.count]) {
+          protectedAutoSuffix = candidateSelectionLearning.protectOverflowSuffix(
+            of: node.asCandidatePair, after: delta, assembler: assembler, store: currentLM.candidateRanking
+          )
+          // 在庫後綴無法保全時，只將本功能持有的自動詞完整送出，避免部分遞交後換掉詞尾。
+          if !protectedAutoSuffix { delta = node.keyArray.count }
+        }
         textToCommit += node.asCandidatePair.value.map(\.description)[0 ..< delta].joined()
       }
       let newCursor = max(assembler.cursor - delta, 0)
       rankingReceipts.append(candidateSelectionLearning.consumePrefix(readingCount: delta, assembler: assembler))
       assembler.cursor = 0
-      if !node.isReadingMismatched { consolidateCursorContext(with: node.asCandidatePair) }
+      if !node.isReadingMismatched, !protectedAutoSuffix { consolidateCursorContext(with: node.asCandidatePair) }
       // 唯音不支援 Bigram，所以無須考慮前後節點「是否需要鞏固」。
       for _ in 0 ..< delta { try? assembler.dropKey(direction: .front) }
       assembler.cursor = newCursor

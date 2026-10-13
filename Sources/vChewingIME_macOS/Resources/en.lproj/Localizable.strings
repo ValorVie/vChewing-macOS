@@ -598,6 +598,8 @@
 "i18n:UserDef.kUseExternalFactoryDict.shortTitle" = "Read external factory dictionary files if possible";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.description" = "This will stop user override model from affecting how candidates get sorted.";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.shortTitle" = "Always use fixed listing order in candidate window";
+"i18n:UserDef.kUsePersonalCandidatePreference.shortTitle" = "Use personal candidate preferences";
+"i18n:UserDef.kUsePersonalCandidatePreference.description" = "Learn manual selections after successful delivery, apply recent preferences to composition, and rank candidates in normal sentence mode. Disabling retains history and does not change the perception override model setting. Fixed order and ETen DOS order affect the candidate window only.";
 "i18n:UserDef.kUseHorizontalCandidateList.description" = "Choose your preferred layout of the candidate window.";
 "i18n:UserDef.kUseHorizontalCandidateList.option.0" = "Vertical";
 "i18n:UserDef.kUseHorizontalCandidateList.option.1" = "Horizontal";

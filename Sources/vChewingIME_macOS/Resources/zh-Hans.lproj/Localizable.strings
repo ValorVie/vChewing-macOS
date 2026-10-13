@@ -598,6 +598,8 @@
 "i18n:UserDef.kUseExternalFactoryDict.shortTitle" = "尽量使用外置原厂辞典档案";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.description" = "这将阻止渐退记忆模组影响候选字词的陈列顺序。";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.shortTitle" = "以固定顺序来陈列选字窗内的候选字";
+"i18n:UserDef.kUsePersonalCandidatePreference.shortTitle" = "使用个人选字偏好";
+"i18n:UserDef.kUsePersonalCandidatePreference.description" = "在一般整句模式记住有效递交的手动选字，依近期偏好直接组字并调整候选顺序。关闭会保留记录，不改变渐退记忆模组设定。固定顺序与倚天排序只控制选字窗，不限制偏好组字。";
 "i18n:UserDef.kUseHorizontalCandidateList.description" = "选择您所偏好的选字窗布局。";
 "i18n:UserDef.kUseHorizontalCandidateList.option.0" = "纵向布局";
 "i18n:UserDef.kUseHorizontalCandidateList.option.1" = "横向布局";

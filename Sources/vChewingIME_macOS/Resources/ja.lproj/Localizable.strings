@@ -598,6 +598,8 @@
 "i18n:UserDef.kUseExternalFactoryDict.shortTitle" = "なるべく（内蔵辞書より）外部の公式辞書ファイルを利用";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.description" = "これで臨時記憶モジュールは候補陳列の順番に影響を与えなくなる。";
 "i18n:UserDef.kUseFixedCandidateOrderOnSelection.shortTitle" = "候補文字を固定順番で陳列する";
+"i18n:UserDef.kUsePersonalCandidatePreference.shortTitle" = "個人の選字設定を使用する";
+"i18n:UserDef.kUsePersonalCandidatePreference.description" = "通常の文節入力で、確定して送信した手動選字を記憶し、組字と候補順に反映します。オフにしても履歴を保持し、既存の記憶モジュール設定は変更しません。固定順と倚天DOS順は候補ウィンドウだけに適用されます。";
 "i18n:UserDef.kUseHorizontalCandidateList.description" = "入力候補陳列の仕様をご指定ください。";
 "i18n:UserDef.kUseHorizontalCandidateList.option.0" = "縦型陳列";
 "i18n:UserDef.kUseHorizontalCandidateList.option.1" = "横型陳列";

@@ -173,6 +173,11 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kUseFixedCandidateOrderOnSelection)
   public var useFixedCandidateOrderOnSelection: Bool
 
+  @AppProperty(userDef: .kUsePersonalCandidatePreference)
+  public var usePersonalCandidatePreference: Bool {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
   @AppProperty(userDef: .kEnforceETenDOSCandidateSequence)
   public var enforceETenDOSCandidateSequence: Bool
 
