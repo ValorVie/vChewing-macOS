@@ -69,11 +69,10 @@ enum D512Dump {
       }
       return grams
     })
-    try assembler.insertKeys(reading.map { Homa.PossibleKey.singleKey($0) })
-    // Bulk insertion starts with cursor 0; the normal incremental update only fills its
-    // maxSegLength window. Complete longer offline inputs with the existing full refresh.
-    if reading.count > assembler.maxSegLength {
-      try assembler.assignNodes(updateBehavior: .refreshExisting)
+    // Match BPMFFullMatchTypewriter's completed-reading flow: each insertKey updates
+    // the moving node window and assembles automatically. Preserve that input history.
+    for syllable in reading {
+      try assembler.insertKey(syllable)
     }
     return assembler
   }
