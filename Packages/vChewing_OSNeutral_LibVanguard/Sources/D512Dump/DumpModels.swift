@@ -7,8 +7,22 @@ import Homa
 import Tekkon
 
 struct DumpError: Error, CustomStringConvertible {
+  enum Code: String {
+    case invalidCase = "invalid_case"
+    case invalidReading = "invalid_reading"
+    case pathCoverage = "path_coverage"
+    case nonAlignedGram = "non_aligned_gram"
+    case scoreInvariant = "score_invariant"
+    case beamScore = "beam_score"
+    case engineError = "engine_error"
+  }
+
   let description: String
-  init(_ description: String) { self.description = description }
+  let code: Code
+  init(_ description: String, code: Code = .engineError) {
+    self.description = description
+    self.code = code
+  }
 }
 
 enum DumpMode: String { case span, nbest }
@@ -21,7 +35,7 @@ struct DumpCase: Decodable {
 
   func validate() throws {
     guard !id.isEmpty, (2 ... 32).contains(reading.count), gold.unicodeScalars.count == reading.count else {
-      throw DumpError("\(id): id must be nonempty; reading must have 2–32 syllables, one gold character per syllable.")
+      throw DumpError("\(id): id must be nonempty; reading must have 2–32 syllables, one gold character per syllable.", code: .invalidCase)
     }
     for syllable in reading {
       var composer = Tekkon.Composer()
@@ -29,7 +43,7 @@ struct DumpCase: Decodable {
         $0 != " " && composer.receiveKey(fromPhonabet: $0)
       }
       guard valid, composer.isPronounceable, composer.getComposition() == syllable else {
-        throw DumpError("\(id): invalid Tekkon reading '\(syllable)' (tone must be at the right; first tone has no mark).")
+        throw DumpError("\(id): invalid Tekkon reading '\(syllable)' (tone must be at the right; first tone has no mark).", code: .invalidReading)
       }
     }
   }
@@ -76,9 +90,11 @@ enum Dumper {
   static func requests(for testCase: DumpCase, assembler: Homa.Assembler, mode: DumpMode, k: Int) throws -> [DumpRequest] {
     try testCase.validate()
     let best = assembler.assembledSentence
-    guard best.totalKeyCount == testCase.reading.count,
-          best.allSatisfy({ $0.value.unicodeScalars.count == $0.segLength }) else {
-      throw DumpError("\(testCase.id): engine path does not cover reading with one character per syllable.")
+    guard best.totalKeyCount == testCase.reading.count else {
+      throw DumpError("\(testCase.id): engine path covers \(best.totalKeyCount) of \(testCase.reading.count) syllables.", code: .pathCoverage)
+    }
+    guard best.allSatisfy({ $0.value.unicodeScalars.count == $0.segLength }) else {
+      throw DumpError("\(testCase.id): engine path contains a gram with unequal character/syllable counts.", code: .nonAlignedGram)
     }
     if mode == .nbest {
       let candidates = try assembler.d512BeamPaths(k: k)
@@ -114,7 +130,7 @@ enum Dumper {
                               context: String, candidates: [DumpCandidate]) throws -> DumpRequest {
     guard let engineDefault = candidates.first,
           candidates.allSatisfy({ $0.log_score.isFinite && engineDefault.log_score >= $0.log_score }) else {
-      throw DumpError("\(testCase.id) [\(start),\(end)): candidate 0 must have the maximum finite log_score.")
+      throw DumpError("\(testCase.id) [\(start),\(end)): candidate 0 must have the maximum finite log_score.", code: .scoreInvariant)
     }
     let gold = String(String.UnicodeScalarView(Array(testCase.gold.unicodeScalars)[start ..< end]))
     return .init(

@@ -2,12 +2,30 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
+import Foundation
 import Homa
 import Testing
+import TrieKit
 @testable import D512Dump
 
 struct D512DumpTests {
   private let reading = ["ㄐㄧㄚˇ", "ㄧˇ", "ㄅㄧㄥˇ"]
+
+  private func singleWordTrie() throws -> VanguardTrie.TextMapTrie {
+    let textMap = """
+    #PRAGMA:VANGUARD_HOMA_LEXICON_HEADER
+    VERSION\t1.1
+    TYPE\tTYPING
+    READING_SEPARATOR\t-
+    ENTRY_COUNT\t1
+    KEY_COUNT\t1
+    #PRAGMA:VANGUARD_HOMA_LEXICON_VALUES
+    @-2\t乙\t乙
+    #PRAGMA:VANGUARD_HOMA_LEXICON_KEY_LINE_MAP
+    ㄧˇ\t0\t1
+    """
+    return try VanguardTrie.TextMapTrie(data: Data((textMap + "\n").utf8))
+  }
 
   private func makeAssembler() throws -> Homa.Assembler {
     let entries: [String: [(String, Double)]] = [
@@ -87,5 +105,75 @@ struct D512DumpTests {
     #expect(throws: DumpError.self) {
       try DumpCase(id: "bad", gold: "甲", reading: reading, context: "").validate()
     }
+  }
+
+  @Test func loaderCoversInputsBeyondTheIncrementalWindow() throws {
+    let trie = try singleWordTrie()
+    for length in [11, 32] {
+      let reading = [String](repeating: "ㄧˇ", count: length)
+      let assembler = try D512Dump.makeAssembler(trie: trie, reading: reading)
+      print("coverage diagnostic: input=\(length), path=\(assembler.assembledSentence.totalKeyCount), empty segment positions=\(assembler.segments.indices.filter { assembler.segments[$0].isEmpty })")
+      #expect(assembler.assembledSentence.totalKeyCount == length)
+      #expect(assembler.assembledSentence.values.joined() == String(repeating: "乙", count: length))
+    }
+  }
+
+  @Test func oneFailedCaseDoesNotInvalidateOtherCases() throws {
+    let input = """
+    {"id":"before","gold":"甲乙丙","reading":["ㄐㄧㄚˇ","ㄧˇ","ㄅㄧㄥˇ"],"context":""}
+    {"id":"bad","gold":"甲乙","reading":["bad-reading","ㄧˇ"],"context":""}
+    {"id":"after","gold":"甲乙丙","reading":["ㄐㄧㄚˇ","ㄧˇ","ㄅㄧㄥˇ"],"context":""}
+    """
+    var output: [Data] = []
+    var diagnostics: [Data] = []
+    let summary = try D512Dump.process(
+      input: input, mode: .span, k: 8, makeAssembler: { _ in try makeAssembler() },
+      emit: { output.append($0) }, diagnose: { diagnostics.append($0) }
+    )
+    let rows = try output.map { try #require(JSONSerialization.jsonObject(with: $0) as? [String: Any]) }
+    #expect(rows.compactMap { $0["id"] as? String } == ["before", "before", "after", "after"])
+    #expect(summary.processed == 3 && summary.succeeded == 2 && summary.skipped == 1 && summary.requests == 4)
+    let skippedData = try #require(diagnostics.first)
+    let skipped = try #require(JSONSerialization.jsonObject(with: skippedData) as? [String: Any])
+    #expect(skipped["id"] as? String == "bad")
+    #expect(skipped["reason"] as? String == "invalid_reading")
+    let totalsData = try #require(diagnostics.last)
+    let totals = try #require(JSONSerialization.jsonObject(with: totalsData) as? [String: Any])
+    #expect(totals["event"] as? String == "summary")
+    #expect(totals["skipped"] as? Int == 1)
+  }
+
+  @Test func malformedJSONRemainsFatalEvenAfterOneSuccessfulCase() throws {
+    let input = """
+    {"id":"before","gold":"甲乙丙","reading":["ㄐㄧㄚˇ","ㄧˇ","ㄅㄧㄥˇ"],"context":""}
+    not JSON
+    {"id":"after","gold":"甲乙丙","reading":["ㄐㄧㄚˇ","ㄧˇ","ㄅㄧㄥˇ"],"context":""}
+    """
+    var output: [Data] = []
+    var diagnostics: [Data] = []
+    #expect(throws: DumpError.self) {
+      try D512Dump.process(input: input, mode: .span, k: 8, makeAssembler: { _ in try makeAssembler() },
+                           emit: { output.append($0) }, diagnose: { diagnostics.append($0) })
+    }
+    #expect(output.count == 2)
+    let data = try #require(diagnostics.last)
+    let totals = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    #expect(totals["succeeded"] as? Int == 1)
+    #expect(totals["skipped"] as? Int == 0)
+  }
+
+  @Test func zeroSuccessfulCasesRemainFatal() throws {
+    let input = #"{"id":"bad","gold":"甲乙","reading":["bad-reading","ㄧˇ"],"context":""}"#
+    var output: [Data] = []
+    var diagnostics: [Data] = []
+    #expect(throws: DumpError.self) {
+      try D512Dump.process(input: input, mode: .nbest, k: 8, makeAssembler: { _ in try makeAssembler() },
+                           emit: { output.append($0) }, diagnose: { diagnostics.append($0) })
+    }
+    #expect(output.isEmpty)
+    let data = try #require(diagnostics.last)
+    let totals = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    #expect(totals["succeeded"] as? Int == 0)
+    #expect(totals["skipped"] as? Int == 1)
   }
 }

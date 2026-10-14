@@ -45,25 +45,12 @@ enum D512Dump {
       throw DumpError("Expected a TYPING factory TextMap with '-' reading separator.")
     }
     let input = try String(contentsOfFile: inputPath, encoding: .utf8)
-    let decoder = JSONDecoder()
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-    var seenIDs = Set<String>()
-    for (lineIndex, line) in input.components(separatedBy: .newlines).enumerated() where !line.isEmpty {
-      do {
-        let testCase = try decoder.decode(DumpCase.self, from: Data(line.utf8))
-        try testCase.validate()
-        guard seenIDs.insert(testCase.id).inserted else { throw DumpError("Duplicate case id: \(testCase.id)") }
-        let assembler = try makeAssembler(trie: trie, reading: testCase.reading)
-        for request in try Dumper.requests(for: testCase, assembler: assembler, mode: mode, k: k) {
-          FileHandle.standardOutput.write(try encoder.encode(request))
-          FileHandle.standardOutput.write(Data([10]))
-        }
-      } catch {
-        throw DumpError("input line \(lineIndex + 1): \(error)")
-      }
-    }
-    guard !seenIDs.isEmpty else { throw DumpError("Input contains no cases.") }
+    _ = try process(
+      input: input, mode: mode, k: k,
+      makeAssembler: { try makeAssembler(trie: trie, reading: $0.reading) },
+      emit: { FileHandle.standardOutput.write($0); FileHandle.standardOutput.write(Data([10])) },
+      diagnose: { FileHandle.standardError.write($0); FileHandle.standardError.write(Data([10])) }
+    )
   }
 
   // Shared by the CLI and its production-factory-supplier equivalence test.
@@ -83,6 +70,11 @@ enum D512Dump {
       return grams
     })
     try assembler.insertKeys(reading.map { Homa.PossibleKey.singleKey($0) })
+    // Bulk insertion starts with cursor 0; the normal incremental update only fills its
+    // maxSegLength window. Complete longer offline inputs with the existing full refresh.
+    if reading.count > assembler.maxSegLength {
+      try assembler.assignNodes(updateBehavior: .refreshExisting)
+    }
     return assembler
   }
 }
