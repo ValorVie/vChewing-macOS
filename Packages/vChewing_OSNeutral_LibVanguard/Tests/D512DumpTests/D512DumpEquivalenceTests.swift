@@ -29,10 +29,11 @@ struct D512DumpEquivalenceTests {
     let cases = try input.split(whereSeparator: \.isNewline).map {
       try JSONDecoder().decode(DumpCase.self, from: Data($0.utf8))
     }
-    try #require(cases.count == 10)
+    try #require(!cases.isEmpty, "Factory equivalence requires at least one case")
     var comparisons: [CaseComparison] = []
     var totalSpans = 0
     var totalCandidates = 0
+    var totalPrefixes = 0
     for testCase in cases {
       try testCase.validate()
       let standalone = try D512Dump.makeAssembler(trie: standaloneTrie, reading: testCase.reading)
@@ -42,11 +43,29 @@ struct D512DumpEquivalenceTests {
           partiallyMatchedKeysPostHandler: nil
         )
       })
-      try reference.insertKeys(testCase.reading.map { Homa.PossibleKey.singleKey($0) })
+      // Feed the production supplier incrementally and compare the standalone loader
+      // after every completed syllable, including inputs longer than maxSegLength.
+      var prefixesEqual = true
+      for (index, syllable) in testCase.reading.enumerated() {
+        try reference.insertKey(syllable)
+        let prefix = try D512Dump.makeAssembler(
+          trie: standaloneTrie, reading: Array(testCase.reading.prefix(index + 1))
+        )
+        let equal = prefix.assembledSentence == reference.assembledSentence &&
+          prefix.mostRecentPathScore == reference.mostRecentPathScore &&
+          prefix.assembledSentence.totalKeyCount == index + 1
+        #expect(equal, "\(testCase.id) after \(index + 1) syllables: standalone=\(prefix.assembledSentence.values) / \(prefix.mostRecentPathScore), reference=\(reference.assembledSentence.values) / \(reference.mostRecentPathScore)")
+        prefixesEqual = prefixesEqual && equal
+        totalPrefixes += 1
+      }
+      try #require(standalone.assembledSentence.totalKeyCount == testCase.reading.count,
+                   "\(testCase.id): standalone path does not cover the complete reading")
+      try #require(reference.assembledSentence.totalKeyCount == testCase.reading.count,
+                   "\(testCase.id): reference path does not cover the complete reading")
       let pathEqual = standalone.assembledSentence == reference.assembledSentence
       let scoreEqual = standalone.mostRecentPathScore == reference.mostRecentPathScore
-      #expect(pathEqual, "\(testCase.id): assembledSentence differs from production factory supplier")
-      #expect(scoreEqual, "\(testCase.id): full path score differs")
+      #expect(pathEqual, "\(testCase.id): standalone=\(standalone.assembledSentence.values), reference=\(reference.assembledSentence.values)")
+      #expect(scoreEqual, "\(testCase.id): standalone score=\(standalone.mostRecentPathScore), reference score=\(reference.mostRecentPathScore)")
       var spanComparisons: [SpanComparison] = []
       var start = 0
       for gram in reference.assembledSentence {
@@ -70,24 +89,31 @@ struct D512DumpEquivalenceTests {
       }
       comparisons.append(.init(
         id: testCase.id, assembled_equal: pathEqual, score_equal: scoreEqual,
+        prefixes_equal: prefixesEqual, standalone_assembled: standalone.assembledSentence.values,
+        standalone_log_score: standalone.mostRecentPathScore,
         assembled: reference.assembledSentence.values, log_score: reference.mostRecentPathScore,
         spans: spanComparisons
       ))
+    }
+    let allEqual = comparisons.allSatisfy {
+      $0.assembled_equal && $0.score_equal && $0.prefixes_equal && $0.spans.allSatisfy(\.full_fetch_equal)
     }
     if let reportPath = environment["D512_EQUIVALENCE_REPORT"] {
       let encoder = JSONEncoder()
       encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
       let report = EquivalenceReport(
         reference: "LXFacade.connectToTestFactoryDictionary + LXFactoryGramSupplier(.cht / isCHS=false)",
+        reference_input: "incremental insertKey per syllable; complete path coverage required",
         baseline: "factory-only CHT pure unigram; no POM/personal candidate learning",
         factory_bytes: data.count, total_cases: cases.count, total_spans: totalSpans,
-        total_candidates_compared: totalCandidates, cases: comparisons
+        total_candidates_compared: totalCandidates, total_prefixes_compared: totalPrefixes,
+        all_equal: allEqual, cases: comparisons
       )
       var output = try encoder.encode(report)
       output.append(10)
       try output.write(to: URL(fileURLWithPath: reportPath))
     }
-    print("Factory equivalence: \(cases.count) cases, \(totalSpans) spans, \(totalCandidates) ordered candidates compared")
+    print("Factory equivalence: \(cases.count) cases, \(totalSpans) spans, \(totalCandidates) ordered candidates, \(totalPrefixes) prefixes compared; all_equal=\(allEqual)")
   }
 
   private struct SpanComparison: Encodable {
@@ -102,6 +128,9 @@ struct D512DumpEquivalenceTests {
     let id: String
     let assembled_equal: Bool
     let score_equal: Bool
+    let prefixes_equal: Bool
+    let standalone_assembled: [String]
+    let standalone_log_score: Double
     let assembled: [String]
     let log_score: Double
     let spans: [SpanComparison]
@@ -109,11 +138,14 @@ struct D512DumpEquivalenceTests {
 
   private struct EquivalenceReport: Encodable {
     let reference: String
+    let reference_input: String
     let baseline: String
     let factory_bytes: Int
     let total_cases: Int
     let total_spans: Int
     let total_candidates_compared: Int
+    let total_prefixes_compared: Int
+    let all_equal: Bool
     let cases: [CaseComparison]
   }
 }
