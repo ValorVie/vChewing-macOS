@@ -41,7 +41,7 @@ extension Homa.Assembler {
     guard engineDefault.text.unicodeScalars.count == length,
           let first = beams[length].first,
           first.log_score <= engineDefault.log_score else {
-      throw DumpError("Beam scores disagree with the factory-only Homa best path.")
+      throw DumpError("Beam scores disagree with the factory-only Homa best path.", code: .beamScore)
     }
     // Homa's existing tie choice is authoritative. Preserve its segmentation as well.
     return [engineDefault] + bestDistinct(beams[length].filter { $0.text != engineDefault.text }, limit: k - 1)
