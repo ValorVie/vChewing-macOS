@@ -70,6 +70,7 @@ let package = Package(
         "vChewingSharedCLI"
       }
     )
+    Product.executable(name: "D512Dump", targets: ["D512Dump"])
   },
   dependencies: buildPackageDependencies {
     .package(path: "Deps/VanguardSwiftExtension")
@@ -188,6 +189,10 @@ let package = Package(
     // MARK: - Executable Target
 
     Target.executableTarget(
+      name: "D512Dump",
+      dependencies: ["Homa", "TrieKit", "Tekkon"]
+    )
+    Target.executableTarget(
       name: "vChewingSharedCLI",
       dependencies: buildTargetDependencies {
         "Shared"
@@ -199,6 +204,7 @@ let package = Package(
 
     // MARK: - Test Targets
 
+    Target.testTarget(name: "D512DumpTests", dependencies: ["D512Dump", "Homa", "TrieKit", "LexiconAssembly"])
     Target.testTarget(
       name: "BPMFVSTests",
       dependencies: buildTargetDependencies {
