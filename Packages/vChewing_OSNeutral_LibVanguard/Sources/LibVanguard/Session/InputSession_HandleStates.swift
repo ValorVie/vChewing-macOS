@@ -11,6 +11,7 @@ extension SessionProtocol {
     public func refreshD512SentenceRerank(refreshComposition: Bool = true) {
       guard let inputHandler else { return }
       inputHandler.d512SentenceRerank.invalidate()
+      inputHandler.d512SentenceRerank.setCalibrationEnabled(prefs.logD512Calibration)
       let hadPin = inputHandler.d512SentenceRerank.hasPin
       inputHandler.d512SentenceRerank.withdraw(assembler: inputHandler.assembler)
       if hadPin, refreshComposition, state.type == .ofInputting {
@@ -133,7 +134,9 @@ extension SessionProtocol {
       if let ctl = clientProxy {
         ctl.clientTextInsertion(with: theBuffer, replacementRange: replacementRange())
         #if compiler(>=6.4)
-          if ctl.hasClient() { inputHandler?.d512SentenceRerank.noteCommit(theBuffer) }
+          if ctl.hasClient() {
+            inputHandler?.d512SentenceRerank.noteCommit(theBuffer, calibrationEnabled: prefs.logD512Calibration)
+          }
         #endif
         rankingReceipt?.confirm(insertedUnchanged: ctl.hasClient() && !theBuffer.isEmpty && theBuffer == originalText)
       } else {

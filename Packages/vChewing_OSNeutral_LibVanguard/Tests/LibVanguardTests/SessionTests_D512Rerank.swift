@@ -50,6 +50,41 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(!testHandler.d512SentenceRerank.hasPin)
   }
 
+  @Test("SS-D512-004 Calibration is opt-in and records scores plus actual insertion")
+  func test_SS_D512_004_Calibration() async throws {
+    prepareD512Fixture()
+    let directory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+    let url = directory.appendingPathComponent("calibration.jsonl")
+    let log = D512CalibrationLog(url: url)
+    testHandler.d512SentenceRerank.calibrationLog = log
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    log.flush()
+    #expect(!FileManager.default.fileExists(atPath: url.path))
+    testSession.switchState(.ofAbortion())
+    testHandler.prefs.logD512Calibration = true
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    log.flush()
+    let before = try String(contentsOf: url, encoding: .utf8)
+    let first = try #require(before.split(separator: "\n").first)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(first.utf8)) as? [String: Any])
+    #expect(json["finalCommittedText"] is NSNull)
+    let candidates = try #require(json["candidates"] as? [[String: Any]])
+    #expect(candidates.allSatisfy { Set(["text", "raw", "modelLogP", "personalHits", "fused"]).isSubset(of: Set($0.keys)) })
+    press(.dataEnterReturn)
+    log.flush()
+    let records = try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map {
+      try JSONDecoder().decode(D512CalibrationRecord.self, from: Data($0.utf8))
+    }
+    #expect(records.count == 2)
+    #expect(records[0].phase == "rerank" && records[1].phase == "commit")
+    #expect(records[0].id == records[1].id)
+    #expect(records[1].finalCommittedText == "世事")
+    #expect(records[1].applied)
+    #expect(!records[1].personalConflict && !records[1].pomConflict)
+  }
+
   private struct D512FakeScorer: D512Scoring {
     func logProb(_ input: D512Input) throws -> Double {
       input.targetIds == [4, 5] ? 0 : -10

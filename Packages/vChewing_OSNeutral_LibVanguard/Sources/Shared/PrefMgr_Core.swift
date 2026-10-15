@@ -183,6 +183,11 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
     didSet { didAskForSyncingLMPrefs?() }
   }
 
+  @AppProperty(userDef: .kLogD512Calibration)
+  public var logD512Calibration: Bool {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
   @AppProperty(userDef: .kD512RerankWeight)
   public var d512RerankWeight: Double
 

@@ -51,6 +51,15 @@
     var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String)?
     private(set) var lastEvaluation: Evaluation?
     var evaluationCompleted: (() -> Void)?
+    var calibrationLog = D512SentenceRerank.sharedCalibrationLog
+    private(set) var lastCalibrationRecord: D512CalibrationRecord?
+    private var calibrationEnabled = false
+    private var pendingRecords: [D512CalibrationRecord] = []
+
+    func setCalibrationEnabled(_ enabled: Bool) {
+      calibrationEnabled = enabled
+      if !enabled { pendingRecords.removeAll() }
+    }
 
     func invalidate() { generation &+= 1 }
 
@@ -63,20 +72,24 @@
       }
     }
 
-    func noteCommit(_ text: String) {
+    func noteCommit(_ text: String, calibrationEnabled: Bool? = nil) {
+      if let calibrationEnabled { setCalibrationEnabled(calibrationEnabled) }
       context = String(String.UnicodeScalarView((context + text).unicodeScalars.suffix(D512Vocab.contextRunes)))
+      finishRecords(text: text)
     }
 
     func leaveClient(assembler: Homa.Assembler) {
       invalidate()
       withdraw(assembler: assembler)
       context = ""
+      finishRecords(text: nil)
     }
 
     func clear(assembler: Homa.Assembler) {
       invalidate()
       withdraw(assembler: assembler)
       keyCommitSnapshot = nil
+      finishRecords(text: nil)
     }
 
     func owns(_ node: Homa.Node?) -> Bool {
@@ -169,6 +182,12 @@
       let grid = handler.personalCandidatePreference.withWithdrawn(assembler: assembler) {
         Grid(config: assembler.config)
       }
+      var pom: [FixedText] = []
+      for (start, segment) in grid.assembler.segments.enumerated() {
+        for (length, node) in segment where node.isOverridden && !node.isExplicitlyOverridden {
+          if let value = node.value { pom.append(.init(range: start ..< start + length, text: value)) }
+        }
+      }
       var latest: [[String]: String] = [:]
       if handler.isCandidateRankingEnabled {
         for segment in grid.assembler.segments {
@@ -191,14 +210,33 @@
                 handler.composer.isEmpty, handler.mixedAlphanumericalBuffer.isEmpty else { return }
           if let evaluation {
             self.lastEvaluation = evaluation
+            var applied = false
             if evaluation.choice != evaluation.defaultIndex {
               handler.personalCandidatePreference.withdraw(assembler: handler.assembler)
-              let applied = self.apply(
+              applied = self.apply(
                 evaluation.paths[evaluation.choice].grams, assembler: handler.assembler, fixedRanges: fixed
               )
               if applied {
                 handler.session?.switchState(handler.generateStateOfInputting())
               } else { handler.applyPersonalCandidatePreference() }
+            }
+            let chosenText = evaluation.paths[applied ? evaluation.choice : evaluation.defaultIndex].text
+            func conflicts(_ texts: [FixedText]) -> Bool {
+              texts.contains { String(chosenText.dropFirst($0.range.lowerBound).prefix($0.range.count)) != $0.text }
+            }
+            let record = D512CalibrationRecord(
+              id: evaluation.request.id, reading: evaluation.request.reading,
+              candidates: evaluation.paths.enumerated().map { index, path in
+                .init(text: path.text, raw: path.raw, modelLogP: evaluation.model?[index],
+                      personalHits: path.personalHits, fused: evaluation.fused?[index])
+              }, defaultIndex: evaluation.defaultIndex, winnerIndex: evaluation.winner,
+              applied: applied, personalConflict: applied && conflicts(personal), pomConflict: applied && conflicts(pom),
+              weight: w, margin: tau, bonus: b
+            )
+            self.lastCalibrationRecord = record
+            if self.calibrationEnabled, handler.prefs.logD512Calibration {
+              self.pendingRecords.append(record)
+              self.calibrationLog.append(record)
             }
           }
           self.evaluationCompleted?()
@@ -273,6 +311,19 @@
     private var pins: [FIUUID: Pin] = [:]
     private let worker: Worker
     private static let defaultWorker = Worker()
+    private static let sharedCalibrationLog = D512CalibrationLog(url: modelDirectory
+      .deletingLastPathComponent().appendingPathComponent("calibration.jsonl"))
+
+    private func finishRecords(text: String?) {
+      if calibrationEnabled {
+        for var record in pendingRecords {
+          record.phase = text == nil ? "cancel" : "commit"
+          record.finalCommittedText = text
+          calibrationLog.append(record)
+        }
+      }
+      pendingRecords.removeAll()
+    }
 
     /// `@unchecked` 限於佇列持有者；scorer、vocab 都只在 queue 內存取。
     nonisolated private final class Worker: @unchecked Sendable {
@@ -339,7 +390,11 @@
           let raw = paths.map(\.raw), hits = paths.map(\.personalHits)
           let fused = D512Fusion.scores(engine: raw, model: result.scores, weight: weight,
                                         personalHits: hits, bonus: bonus)
-          let winner = fused.flatMap { scores in scores.indices.max { scores[$0] < scores[$1] } } ?? d
+          var winner = d
+          if let fused, !fused.isEmpty {
+            winner = 0
+            for i in fused.indices where fused[i] > fused[winner] { winner = i }
+          }
           let choice = D512Fusion.choose(engine: raw, model: result.scores, default: d, weight: weight,
                                          margin: margin, personalHits: hits, bonus: bonus)
           return .init(request: request, paths: paths, model: result.scores, fused: fused,
@@ -352,6 +407,7 @@
   extension InputHandlerProtocol {
     func scheduleD512Rerank() {
       let rerank = d512SentenceRerank
+      rerank.setCalibrationEnabled(prefs.logD512Calibration)
       guard prefs.useD512SentenceRerank, session?.state.type == .ofInputting,
             currentTypingMethod == .vChewingFactory, !prefs.useSCPCTypingMode,
             !prefs.cassetteEnabled, composer.isEmpty, mixedAlphanumericalBuffer.isEmpty,
