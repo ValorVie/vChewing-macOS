@@ -10,10 +10,14 @@ import Foundation
 // onnxruntime source (checked 2026-10-15): official pod archive `pod-archive-onnxruntime-c-1.30.0.zip`
 // from https://download.onnxruntime.ai, SHA-256 e6f1670c14406fd9f082bb400ab197a9b0a9646058ca6366e440642e2b54a2ea,
 // declared as a binaryTarget in `Package.swift` (which records why the official SwiftPM package is not used).
+// Its static library is built with minos 14.0 (`otool -l`, LC_BUILD_VERSION; the podspec also lists macOS 14),
+// so everything here is `@available(macOS 14, *)` even though the package floor is macOS 12: callers on a
+// macOS 12/13 deployment target must gate at compile time. Package-level platforms cannot be raised per target.
 
 // MARK: - D512ONNXScorer
 
 /// `D512Scoring` backed by an onnxruntime CPU session over `d512-pf512-20260926/model.onnx`.
+@available(macOS 14, *)
 public final class D512ONNXScorer: D512Scoring {
   public struct Failure: Error, CustomStringConvertible {
     public let description: String
@@ -74,7 +78,7 @@ public final class D512ONNXScorer: D512Scoring {
     var raw: UnsafeMutableRawPointer?
     try check(api.GetTensorMutableData(output, &raw))
     guard let raw else { throw Failure(description: "empty scores tensor") }
-    return Double(raw.load(as: Float.self))
+    return Double(raw.load(as: Float.self)) // NaN/±inf is rejected by `D512Vocab.modelScores`
   }
 
   private static let inputNames = [

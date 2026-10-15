@@ -206,7 +206,9 @@ let package = Package(
       // package's macOS 12 floor ("requires minimum platform version 14.0 for the macOS platform, but
       // this target supports 12.0"). 1.24.2 (its archive, checksum f7100a99…) also missed the 1e-4
       // equivalence bar against the Python harness (onnxruntime 1.31.0; max diff 1.18e-4); 1.30.0
-      // matches it bit for bit. The archive's static library is built with minos 14.0. Declared only
+      // matches it bit for bit. The archive's static library (ORT 1.30.0) is built with minos 14.0, so
+      // `D512RerankONNX`'s public types and `D512Score` are `@available(macOS 14, *)` / `#available`-gated
+      // (the package floor stays macOS 12 for the shipped `Vanguard` product, which does not link ORT). Declared only
       // on macOS so Linux/Windows never resolve or download it.
       Target.binaryTarget(
         name: "onnxruntime",
@@ -244,7 +246,7 @@ let package = Package(
     #if os(macOS)
       Target.testTarget(
         name: "D512RerankONNXTests",
-        dependencies: ["D512Rerank", "D512RerankONNX"],
+        dependencies: ["D512Rerank", "D512RerankONNX", "D512Score"], // D512Score: exit-code test runs the binary
         resources: buildResources {
           Resource.copy("Resources/held-out-fixture.json")
         }

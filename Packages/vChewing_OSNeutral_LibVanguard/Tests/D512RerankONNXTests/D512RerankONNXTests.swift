@@ -36,7 +36,9 @@ private struct Fixture: Decodable {
   }
 }
 
+// `@available` sits on each test: swift-testing rejects it on the suite type.
 struct D512RerankONNXTests {
+  @available(macOS 14, *)
   @Test(.enabled(if: hasModel, "D512 model not present"))
   func scoresAndFusionWinnersMatchPythonHarness() throws {
     let scorer = try D512ONNXScorer(modelDirectory: modelDir)
@@ -59,6 +61,53 @@ struct D512RerankONNXTests {
     }
   }
 
+  /// Runs the built `D512Score` on the fixture against a report whose expected scores are shifted by `bias`.
+  private func scoreExitCode(bias: Double, extraArgs: [String] = []) throws -> Int32 {
+    let cases = try Fixture.load()
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("d512-score-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let requests = try cases.map { c -> String in
+      let obj: [String: Any] = [
+        "id": c.id, "context": c.context, "reading": c.reading, "engine_default": c.engine_default,
+        "candidates": c.candidates.map { ["text": $0.text, "log_score": $0.log_score] },
+      ]
+      return String(decoding: try JSONSerialization.data(withJSONObject: obj), as: UTF8.self)
+    }
+    try requests.joined(separator: "\n").write(to: dir.appendingPathComponent("r.jsonl"), atomically: true, encoding: .utf8)
+    let perRequest: [[String: Any]] = cases.map { c in
+      guard let model = c.expected_model else { return ["id": c.id, "fallback": "oov", "task": NSNull(), "model": NSNull()] }
+      return ["id": c.id, "task": "phonetic", "model": model.enumerated().map { $0 == 1 ? $1 + bias : $1 }]
+    }
+    try JSONSerialization.data(withJSONObject: ["per_request": perRequest]).write(to: dir.appendingPathComponent("p.json"))
+    let process = Process()
+    // The D512Score binary sits in the products dir, an ancestor of this target's resource bundle
+    // (which may itself be copied into `<tests>.xctest/Contents/Resources`).
+    let binary = sequence(first: Bundle.module.bundleURL.deletingLastPathComponent()) {
+      $0.path == "/" ? nil : $0.deletingLastPathComponent()
+    }.map { $0.appendingPathComponent("D512Score") }.first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    process.executableURL = try #require(binary, "D512Score binary not found")
+    process.arguments = [
+      "--model-dir", modelDir.path, "--requests", dir.appendingPathComponent("r.jsonl").path,
+      "--report", dir.appendingPathComponent("p.json").path,
+    ] + extraArgs
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    try process.run()
+    process.waitUntilExit()
+    return process.terminationStatus
+  }
+
+  @available(macOS 14, *)
+  @Test(.enabled(if: hasModel, "D512 model not present"))
+  func scoreToolExitCodeGatesEquivalence() throws {
+    #expect(try scoreExitCode(bias: 0) == 0)
+    #expect(try scoreExitCode(bias: 1e-3) == 1) // over the default 1e-4
+    #expect(try scoreExitCode(bias: 1e-3, extraArgs: ["--tolerance", "1e-2"]) == 0)
+    #expect(try scoreExitCode(bias: 100, extraArgs: ["--tolerance", "1e9"]) == 1) // fusion winners flip
+  }
+
+  @available(macOS 14, *)
   @Test func hashMismatchIsRejected() throws {
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("d512-hash-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
