@@ -192,6 +192,8 @@ let package = Package(
       name: "D512Dump",
       dependencies: ["Homa", "TrieKit", "Tekkon"]
     )
+    // D512 rerank: OS-neutral encoding/fusion; inference is the macOS-only `D512RerankONNX`.
+    Target.target(name: "D512Rerank")
     Target.executableTarget(
       name: "vChewingSharedCLI",
       dependencies: buildTargetDependencies {
@@ -205,6 +207,7 @@ let package = Package(
     // MARK: - Test Targets
 
     Target.testTarget(name: "D512DumpTests", dependencies: ["D512Dump", "Homa", "TrieKit", "LexiconAssembly"])
+    Target.testTarget(name: "D512RerankTests", dependencies: ["D512Rerank"])
     Target.testTarget(
       name: "BPMFVSTests",
       dependencies: buildTargetDependencies {
