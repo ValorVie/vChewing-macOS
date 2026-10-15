@@ -57,4 +57,25 @@ final class CtlSettingsUITests {
     controller.setValue(true, forKeyPath: keyPath)
     #expect(control.isEnabled)
   }
+
+  @Test("SS-D512-A26-K5 The acceptance key control requires enabled suggestion mode")
+  func testD512AcceptKeyRequiresSuggestMode() throws {
+    _ = try #require(UserDef(rawValue: "D512SuggestionAcceptKey"))
+    let controller = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    let master = "values.UseD512SentenceRerank"
+    let mode = "values.D512RerankMode"
+    controller.setValue(false, forKeyPath: master)
+    controller.setValue(1, forKeyPath: mode)
+    let pane = SettingsPanesCocoa.Candidates()
+    let control = NSPopUpButton()
+    pane.configureD512AcceptKeyControl(control, defaults: controller)
+    #expect(!control.isEnabled)
+    controller.setValue(true, forKeyPath: master)
+    controller.setValue(0, forKeyPath: mode)
+    #expect(!control.isEnabled)
+    controller.setValue(1, forKeyPath: mode)
+    #expect(control.isEnabled)
+    controller.setValue(false, forKeyPath: master)
+    #expect(!control.isEnabled)
+  }
 }

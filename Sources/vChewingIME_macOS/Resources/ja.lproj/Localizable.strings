@@ -639,6 +639,12 @@
 "i18n:D512.ModelInvalid" = "D512 は無効です：モデルの検証または語彙表の読み込みに失敗しました。";
 
 "i18n:UserDef.kD512RerankMode.shortTitle" = "D512 校正モード";
-"i18n:UserDef.kD512RerankMode.description" = "自動で適用するか、Tab で採用する提案だけを表示します。採用は手動選択として学習され、他のキーで提案を破棄します。";
+"i18n:UserDef.kD512RerankMode.description" = "自動で適用するか、選んだキーで採用する提案だけを表示します。採用は手動選択として学習され、他のキーで提案を破棄します。";
 "i18n:UserDef.kD512RerankMode.option.0" = "自動適用";
-"i18n:UserDef.kD512RerankMode.option.1" = "提案のみ（Tab で採用）";
+"i18n:UserDef.kD512RerankMode.option.1" = "提案のみ";
+
+"i18n:UserDef.kD512SuggestionAcceptKey.shortTitle" = "提案を採用するキー";
+"i18n:UserDef.kD512SuggestionAcceptKey.description" = "提案のみのモードで使うキーを選びます。専用の Tab キーは提案がないときに入力中の文字列を変更しません。方向キーは文末でのみ採用し、縦書きでは下方向キーを使います。";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "右方向キー（文末）";

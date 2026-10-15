@@ -639,6 +639,12 @@
 "i18n:D512.ModelInvalid" = "D512 已停用：模型验证或词汇表载入失败。";
 
 "i18n:UserDef.kD512RerankMode.shortTitle" = "D512 校正模式";
-"i18n:UserDef.kD512RerankMode.description" = "自动套用校正，或只显示建议供 Tab 接受。接受视同手选学习，其他按键会丢弃建议。";
+"i18n:UserDef.kD512RerankMode.description" = "自动套用校正，或只显示建议供选定的按键接受。接受视同手选学习，其他按键会丢弃建议。";
 "i18n:UserDef.kD512RerankMode.option.0" = "自动套用";
-"i18n:UserDef.kD512RerankMode.option.1" = "仅建议（Tab 接受）";
+"i18n:UserDef.kD512RerankMode.option.1" = "仅建议";
+
+"i18n:UserDef.kD512SuggestionAcceptKey.shortTitle" = "接受建议的按键";
+"i18n:UserDef.kD512SuggestionAcceptKey.description" = "在仅建议模式中选择接受键。专用 Tab 组合在没有建议时不改组字；方向键只在句尾接受，直排使用下方向键。";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "右方向键（句尾）";

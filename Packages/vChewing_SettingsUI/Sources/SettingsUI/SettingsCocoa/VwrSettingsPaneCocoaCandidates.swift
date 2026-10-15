@@ -141,6 +141,11 @@ extension SettingsPanesCocoa {
             ) { renderable in
               self.configureD512ModeControl(renderable.currentControl)
             }
+            UserDef.kD512SuggestionAcceptKey.renderCocoa(
+              fixWidth: contentWidth, prefUITab: .tabCandidates
+            ) { renderable in
+              self.configureD512AcceptKeyControl(renderable.currentControl)
+            }
             if let reason = d512Reason {
               NSTextField(wrappingLabelWithString: reason)
             }
@@ -208,6 +213,24 @@ extension SettingsPanesCocoa {
       control?.target = self
       control?.action = #selector(personalCandidatePreferenceDidSet(_:))
     }
+
+    #if compiler(>=6.4)
+      func configureD512AcceptKeyControl(
+        _ control: NSControl?, defaults: NSUserDefaultsController = .shared
+      ) {
+        configureD512ModeControl(control, defaults: defaults)
+        control?.bind(
+          NSBindingName("enabled2"), to: defaults,
+          withKeyPath: "values.\(UserDef.kD512RerankMode.rawValue)",
+          options: [.valueTransformer: D512SuggestModeTransformer()]
+        )
+      }
+
+      nonisolated private final class D512SuggestModeTransformer: ValueTransformer {
+        override class func transformedValueClass() -> AnyClass { NSNumber.self }
+        override func transformedValue(_ value: Any?) -> Any? { (value as? NSNumber)?.intValue == 1 }
+      }
+    #endif
 
     @IBAction
     func performCandidateKeysSanityCheck(_: NSControl) {

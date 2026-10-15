@@ -639,6 +639,12 @@
 "i18n:D512.ModelInvalid" = "D512 is unavailable: model verification or vocabulary loading failed.";
 
 "i18n:UserDef.kD512RerankMode.shortTitle" = "D512 correction mode";
-"i18n:UserDef.kD512RerankMode.description" = "Automatically apply corrections, or show suggestions for Tab to accept. Accepting counts as a manual choice; other keys discard the suggestion.";
+"i18n:UserDef.kD512RerankMode.description" = "Automatically apply corrections, or show suggestions for the selected key to accept. Accepting counts as a manual choice; other keys discard the suggestion.";
 "i18n:UserDef.kD512RerankMode.option.0" = "Automatic";
-"i18n:UserDef.kD512RerankMode.option.1" = "Suggest only (Tab to accept)";
+"i18n:UserDef.kD512RerankMode.option.1" = "Suggest only";
+
+"i18n:UserDef.kD512SuggestionAcceptKey.shortTitle" = "Suggestion acceptance key";
+"i18n:UserDef.kD512SuggestionAcceptKey.description" = "Choose a key for suggest mode. Dedicated Tab keys leave composition unchanged when no suggestion is available. The arrow accepts only at the sentence end; use the down arrow in vertical text.";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
+"i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "Right arrow (sentence end)";

@@ -76,6 +76,10 @@
               SettingsUIHost.shared.syncLMPrefs()
             }
             .disabled(!useD512SentenceRerank)
+            UserDef.kD512SuggestionAcceptKey.renderUI {
+              SettingsUIHost.shared.syncLMPrefs()
+            }
+            .disabled(!useD512SentenceRerank || d512RerankMode != 1)
             if let reason = d512UnavailableReason {
               Text(reason).font(.footnote).foregroundStyle(.secondary)
             }
@@ -127,6 +131,8 @@
       @State private var d512UnavailableReason: String? = nil
       @AppStorage(wrappedValue: false, UserDef.kUseD512SentenceRerank.rawValue)
       private var useD512SentenceRerank: Bool
+      @AppStorage(wrappedValue: 0, UserDef.kD512RerankMode.rawValue)
+      private var d512RerankMode: Int
     #endif
 
     // MARK: - AppStorage Variables（僅保留需在 View 條件中讀取的屬性）
