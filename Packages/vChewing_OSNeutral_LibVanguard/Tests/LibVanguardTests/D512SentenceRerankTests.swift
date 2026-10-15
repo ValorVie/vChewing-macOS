@@ -53,6 +53,7 @@ extension LibVanguardTestsRoot {
       #expect(first.generation == 2)
       #expect(UserDef.kUseD512SentenceRerank.boolDefaultValue == false)
       #expect(UserDef.kD512RerankPersonalBonus.doubleDefaultValue == 2)
+      #expect(second.debounceSeconds == 0.15)
     }
 
     @Test func injectedScorerRunsThroughBackgroundWorker() async {
@@ -72,6 +73,30 @@ extension LibVanguardTestsRoot {
       }
       #expect(result.scores == [-2])
       #expect(result.error == nil)
+    }
+
+    @Test func personalHitsRejectContextIncompleteKeysAndSplitWords() {
+      func path(_ keys: [String], _ text: String, previous: String? = nil,
+                words: [Range<Int>] = []) -> D512SentenceRerank.Path {
+        let gram = Homa.Gram(keyArray: keys, current: text, previous: previous, probability: -1)
+        return .init(grams: [.init(gram: gram, isExplicit: false)], latest: [keys: text], wordRanges: words)
+      }
+      #expect(path(["ㄕˋ", "ㄕˋ"], "世事").personalHits == 1)
+      #expect(path(["ㄕˋ"], "世", words: [0 ..< 2]).personalHits == 0)
+      #expect(path(["ㄕˋ"], "世", previous: "前").personalHits == 0)
+      #expect(path(["_punctuation"], "。").personalHits == 0)
+      #expect(path([""], "世").personalHits == 0)
+      #expect(path(["ㄕˋ"], "世事").personalHits == 0)
+    }
+
+    @Test func missingAndHashMismatchedModelsAreUnavailable() throws {
+      let directory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+      #expect(D512SentenceRerank.unavailableReason(at: directory) != nil)
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      for name in ["model.onnx", "vocab.json", "manifest.json"] {
+        try Data("invalid".utf8).write(to: directory.appendingPathComponent(name))
+      }
+      #expect(D512SentenceRerank.unavailableReason(at: directory) != nil)
     }
   }
 }

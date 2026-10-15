@@ -113,6 +113,11 @@ extension SessionProtocol {
     let rankingReceipt = inputHandler.flatMap {
       $0.candidateSelectionLearning.takeCommit(text: text, assembler: $0.assembler)
     }
+    #if compiler(>=6.4)
+      let rerank = inputHandler?.d512SentenceRerank
+      let clientEpoch = rerank?.clientEpoch
+      let calibrationRecords = rerank?.takeCommitRecords() ?? []
+    #endif
     let originalText = text
     // WeChat 相容所需。
     if clearDisplayBeforeCommit {
@@ -134,13 +139,18 @@ extension SessionProtocol {
       if let ctl = clientProxy {
         ctl.clientTextInsertion(with: theBuffer, replacementRange: replacementRange())
         #if compiler(>=6.4)
-          if ctl.hasClient() {
-            inputHandler?.d512SentenceRerank.noteCommit(theBuffer, calibrationEnabled: prefs.logD512Calibration)
+          if ctl.hasClient(), rerank?.clientEpoch == clientEpoch {
+            rerank?.noteCommit(theBuffer, calibrationEnabled: prefs.logD512Calibration)
           }
+          rerank?.confirmCommitRecords(calibrationRecords, text: ctl.hasClient() ? theBuffer : nil,
+                                       enabled: prefs.logD512Calibration)
         #endif
         rankingReceipt?.confirm(insertedUnchanged: ctl.hasClient() && !theBuffer.isEmpty && theBuffer == originalText)
       } else {
         rankingReceipt?.confirm(insertedUnchanged: false)
+        #if compiler(>=6.4)
+          rerank?.confirmCommitRecords(calibrationRecords, text: nil, enabled: prefs.logD512Calibration)
+        #endif
       }
     }
 

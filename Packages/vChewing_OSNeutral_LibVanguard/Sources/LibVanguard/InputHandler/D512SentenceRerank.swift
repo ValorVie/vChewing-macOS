@@ -46,6 +46,7 @@
 
     private(set) var generation: UInt64 = 0
     private(set) var context = ""
+    private(set) var clientEpoch: UInt64 = 0
     var hasPin: Bool { !pins.isEmpty }
     var debounceSeconds: Double = 0.15
     var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String)?
@@ -79,6 +80,7 @@
     }
 
     func leaveClient(assembler: Homa.Assembler) {
+      clientEpoch &+= 1
       invalidate()
       withdraw(assembler: assembler)
       context = ""
@@ -204,7 +206,9 @@
       let b = handler.prefs.d512RerankPersonalBonus
       let keys = assembler.keys
       let completion: @MainActor @Sendable (Evaluation?) -> Void = { [weak self, weak handler] evaluation in
-          guard let self, let handler, self.generation == token,
+          guard let self else { return }
+          defer { self.evaluationCompleted?() }
+          guard let handler, self.generation == token,
                 handler.prefs.useD512SentenceRerank, handler.session?.state.type == .ofInputting,
                 handler.assembler.keys == keys,
                 handler.composer.isEmpty, handler.mixedAlphanumericalBuffer.isEmpty else { return }
@@ -239,7 +243,6 @@
               self.calibrationLog.append(record)
             }
           }
-          self.evaluationCompleted?()
       }
       worker.queue.async { [worker, latest] in
         let evaluation = worker.evaluate(
@@ -323,6 +326,21 @@
         }
       }
       pendingRecords.removeAll()
+    }
+
+    /// 遞交可延後至下一個主佇列迴圈；先取出收據，避免 clear 將它記成取消。
+    func takeCommitRecords() -> [D512CalibrationRecord] {
+      defer { pendingRecords.removeAll() }
+      return calibrationEnabled ? pendingRecords : []
+    }
+
+    func confirmCommitRecords(_ records: [D512CalibrationRecord], text: String?, enabled: Bool) {
+      guard enabled else { return }
+      for var record in records {
+        record.phase = text == nil ? "cancel" : "commit"
+        record.finalCommittedText = text
+        calibrationLog.append(record)
+      }
     }
 
     /// `@unchecked` 限於佇列持有者；scorer、vocab 都只在 queue 內存取。

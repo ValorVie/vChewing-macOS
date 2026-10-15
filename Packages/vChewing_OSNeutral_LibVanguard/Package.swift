@@ -336,6 +336,9 @@ let package = Package(
       name: "LibVanguardTests",
       dependencies: buildTargetDependencies {
         "D512Rerank"
+        #if os(macOS)
+          "D512RerankONNX"
+        #endif
         "LibVanguard"
         "LexiconAssembly"
         "LXAssemblyMaterials4Tests"
