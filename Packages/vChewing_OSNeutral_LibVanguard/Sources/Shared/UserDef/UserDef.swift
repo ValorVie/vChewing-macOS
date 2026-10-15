@@ -89,6 +89,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kUseFixedCandidateOrderOnSelection = "UseFixedCandidateOrderOnSelection"
   case kUsePersonalCandidatePreference = "UsePersonalCandidatePreference"
   case kUseD512SentenceRerank = "UseD512SentenceRerank"
+  case kD512RerankMode = "D512RerankMode"
   case kLogD512Calibration = "LogD512Calibration"
   case kD512RerankWeight = "D512RerankWeight"
   case kD512RerankMargin = "D512RerankMargin"
@@ -729,6 +730,7 @@ extension UserDef {
     case .kUseFixedCandidateOrderOnSelection: return .bool(false)
     case .kUsePersonalCandidatePreference: return .bool(true)
     case .kUseD512SentenceRerank: return .bool(false)
+    case .kD512RerankMode: return .integer(0)
     case .kLogD512Calibration: return .bool(false)
     case .kD512RerankWeight, .kD512RerankMargin: return .double(0.5)
     case .kD512RerankPersonalBonus: return .double(2)
@@ -1194,6 +1196,14 @@ extension UserDef {
     case .kLogD512Calibration: return .init(
       userDef: self, shortTitle: "i18n:UserDef.kLogD512Calibration.shortTitle",
       description: "i18n:UserDef.kLogD512Calibration.description"
+    )
+    case .kD512RerankMode: return .init(
+      userDef: self, shortTitle: "i18n:UserDef.kD512RerankMode.shortTitle",
+      description: "i18n:UserDef.kD512RerankMode.description",
+      options: [
+        0: "i18n:UserDef.kD512RerankMode.option.0",
+        1: "i18n:UserDef.kD512RerankMode.option.1",
+      ]
     )
     case .kD512RerankWeight, .kD512RerankMargin, .kD512RerankPersonalBonus: return nil
     case .kAutoCorrectReadingCombination: return .init(

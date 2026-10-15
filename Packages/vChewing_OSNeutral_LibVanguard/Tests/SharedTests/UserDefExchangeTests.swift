@@ -24,6 +24,17 @@ final class UserDefExchangeTests {
 
   // MARK: Internal
 
+  @Test
+  func testD512ModeDefaultsToAutomatic() throws {
+    let key = try #require(UserDef(rawValue: "D512RerankMode"))
+    #expect(key.intDefaultValue == 0)
+    let prefs = PrefMgr()
+    #expect(prefs.d512RerankMode == 0)
+    prefs.d512RerankMode = 1
+    #expect(UserDefaults.current.integer(forKey: key.rawValue) == 1)
+    #expect(prefs.useD512SentenceRerank == false)
+  }
+
   /// §3.1 命名紀律。
   @Test
   func testNamingDisciplineOfRawValues() {

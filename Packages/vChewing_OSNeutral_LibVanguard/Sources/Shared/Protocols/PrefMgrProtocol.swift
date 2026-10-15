@@ -56,6 +56,7 @@ public protocol PrefMgrProtocol {
   var useFixedCandidateOrderOnSelection: Bool { get set }
   var usePersonalCandidatePreference: Bool { get set }
   var useD512SentenceRerank: Bool { get set }
+  var d512RerankMode: Int { get set }
   var logD512Calibration: Bool { get set }
   var d512RerankWeight: Double { get set }
   var d512RerankMargin: Double { get set }
