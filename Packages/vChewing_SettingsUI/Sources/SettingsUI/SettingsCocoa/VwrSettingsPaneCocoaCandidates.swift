@@ -3,6 +3,9 @@
 // This code is released under the SPDX-License-Identifier: `MulanPSL-2.0`.
 
 import AppKit
+#if compiler(>=6.4)
+  import LibVanguard
+#endif
 
 // MARK: - SettingsPanesCocoa.Candidates
 
@@ -124,6 +127,25 @@ extension SettingsPanesCocoa {
             renderable.currentControl?.target = self
             renderable.currentControl?.action = #selector(self.personalCandidatePreferenceDidSet(_:))
           }
+          #if compiler(>=6.4)
+            let d512Reason = D512SentenceRerank.unavailableReason
+            UserDef.kUseD512SentenceRerank.renderCocoa(
+              fixWidth: contentWidth, prefUITab: .tabCandidates
+            ) { renderable in
+              renderable.currentControl?.isEnabled = d512Reason == nil
+              renderable.currentControl?.target = self
+              renderable.currentControl?.action = #selector(self.personalCandidatePreferenceDidSet(_:))
+            }
+            if let reason = d512Reason {
+              NSTextField(wrappingLabelWithString: reason)
+            }
+            UserDef.kLogD512Calibration.renderCocoa(
+              fixWidth: contentWidth, prefUITab: .tabCandidates
+            ) { renderable in
+              renderable.currentControl?.target = self
+              renderable.currentControl?.action = #selector(self.personalCandidatePreferenceDidSet(_:))
+            }
+          #endif
           UserDef.kUseFixedCandidateOrderOnSelection.renderCocoa(
             fixWidth: contentWidth,
             prefUITab: .tabCandidates

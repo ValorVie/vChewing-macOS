@@ -7,6 +7,9 @@
 #if compiler(>=6.2)
 
   import SwiftUI
+  #if compiler(>=6.4)
+    import LibVanguard
+  #endif
 
   // MARK: - VwrSettingsPaneCandidates
 
@@ -64,6 +67,18 @@
           UserDef.kUsePersonalCandidatePreference.renderUI {
             SettingsUIHost.shared.syncLMPrefs()
           }
+          #if compiler(>=6.4)
+            UserDef.kUseD512SentenceRerank.renderUI {
+              SettingsUIHost.shared.syncLMPrefs()
+            }
+            .disabled(d512UnavailableReason != nil)
+            if let reason = d512UnavailableReason {
+              Text(reason).font(.footnote).foregroundStyle(.secondary)
+            }
+            UserDef.kLogD512Calibration.renderUI {
+              SettingsUIHost.shared.syncLMPrefs()
+            }
+          #endif
           UserDef.kUseFixedCandidateOrderOnSelection.renderUI()
           UserDef.kConsolidateContextOnCandidateSelection.renderUI()
           UserDef.kCandidateNarrationToggleType.renderUI()
@@ -83,6 +98,9 @@
           imkEOSNoticeButton
         }
       }.formStyled()
+        #if compiler(>=6.4)
+          .onAppear { d512UnavailableReason = D512SentenceRerank.unavailableReason }
+        #endif
         .frame(
           minWidth: CtlSettingsUI.formWidth,
           maxHeight: CtlSettingsUI.contentMaxHeight
@@ -101,6 +119,9 @@
 
     @State
     private var isShowingIMKEOSNotice = false
+    #if compiler(>=6.4)
+      @State private var d512UnavailableReason = D512SentenceRerank.unavailableReason
+    #endif
 
     // MARK: - AppStorage Variables（僅保留需在 View 條件中讀取的屬性）
 

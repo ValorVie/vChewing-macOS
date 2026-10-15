@@ -629,3 +629,11 @@
 "i18n:UserDef.kUsingHotKeyPinyinZhuyinTypingSwitch.shortTitle" = "拼音/注音打字模式切換";
 "i18n:UserDef.kUsingHotKeyRevLookup.shortTitle" = "注音反查";
 "i18n:UserDef.kUsingHotKeySCPC.shortTitle" = "模擬逐字選字輸入";
+
+"i18n:UserDef.kUseD512SentenceRerank.shortTitle" = "使用 D512 句級重排（實驗性）";
+"i18n:UserDef.kUseD512SentenceRerank.description" = "停頓後融合模型分數與個人選字偏好，保留手選區段。需要 macOS 14 及通過驗證的 D512 模型。";
+"i18n:UserDef.kLogD512Calibration.shortTitle" = "記錄 D512 校準資料";
+"i18n:UserDef.kLogD512Calibration.description" = "在本機保存讀音、候選、分數與送出文字。紀錄包含您的個人打字資料，預設關閉。";
+"i18n:D512.RequiresMacOS14" = "D512 需要 macOS 14 或更新版本。";
+"i18n:D512.ModelMissing" = "D512 已停用：缺少模型檔案。";
+"i18n:D512.ModelInvalid" = "D512 已停用：模型驗證或詞彙表載入失敗。";

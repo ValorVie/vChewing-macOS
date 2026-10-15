@@ -629,3 +629,11 @@
 "i18n:UserDef.kUsingHotKeyPinyinZhuyinTypingSwitch.shortTitle" = "弁音/注音タイピングモード切替";
 "i18n:UserDef.kUsingHotKeyRevLookup.shortTitle" = "注音音読逆引参照";
 "i18n:UserDef.kUsingHotKeySCPC.shortTitle" = "全候補入力モード";
+
+"i18n:UserDef.kUseD512SentenceRerank.shortTitle" = "D512 文単位の候補再評価を使用（実験的）";
+"i18n:UserDef.kUseD512SentenceRerank.description" = "入力の短い停止後、モデルのスコアと個人の選字履歴を統合します。手動選択は維持されます。macOS 14 と検証済みの D512 モデルが必要です。";
+"i18n:UserDef.kLogD512Calibration.shortTitle" = "D512 の調整用データを記録";
+"i18n:UserDef.kLogD512Calibration.description" = "読み、候補、スコアと確定した文字列をローカルに保存します。個人の入力内容を含むため、初期設定では無効です。";
+"i18n:D512.RequiresMacOS14" = "D512 には macOS 14 以降が必要です。";
+"i18n:D512.ModelMissing" = "D512 は無効です：モデルファイルがありません。";
+"i18n:D512.ModelInvalid" = "D512 は無効です：モデルの検証または語彙表の読み込みに失敗しました。";

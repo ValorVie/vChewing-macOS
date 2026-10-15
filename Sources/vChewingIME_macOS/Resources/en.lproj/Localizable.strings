@@ -629,3 +629,11 @@
 "i18n:UserDef.kUsingHotKeyPinyinZhuyinTypingSwitch.shortTitle" = "Pinyin/Zhuyin Typing Mode Switch";
 "i18n:UserDef.kUsingHotKeyRevLookup.shortTitle" = "Reverse Lookup (Phonabets)";
 "i18n:UserDef.kUsingHotKeySCPC.shortTitle" = "Per-Char Select Mode";
+
+"i18n:UserDef.kUseD512SentenceRerank.shortTitle" = "Use D512 sentence reranking (experimental)";
+"i18n:UserDef.kUseD512SentenceRerank.description" = "After a short pause, blend model scores with personal choices. Manual choices remain fixed. Requires macOS 14 and the verified D512 model.";
+"i18n:UserDef.kLogD512Calibration.shortTitle" = "Record D512 calibration data";
+"i18n:UserDef.kLogD512Calibration.description" = "Saves readings, candidates, scores and submitted text locally. These records contain your personal typing data. Disabled by default.";
+"i18n:D512.RequiresMacOS14" = "D512 requires macOS 14 or later.";
+"i18n:D512.ModelMissing" = "D512 is unavailable: model files are missing.";
+"i18n:D512.ModelInvalid" = "D512 is unavailable: model verification or vocabulary loading failed.";
