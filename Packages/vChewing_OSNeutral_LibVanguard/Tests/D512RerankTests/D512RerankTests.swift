@@ -113,6 +113,16 @@ struct D512RerankTests {
     #expect(vocab.rerank(req, scorer: Injected(bad: -1), weight: 0.5, margin: 0.5).error == nil)
   }
 
+  @Test func rerankRejectsOutOfRangeDefault() {
+    let req = D512Request(
+      id: "bad", context: "", reading: ["ㄋㄧ", "ㄏㄠ"],
+      candidates: [.init(text: "你好", log_score: -1), .init(text: "你嗎", log_score: -2)], engineDefault: 9
+    )
+    let (choice, error) = vocab.rerank(req, scorer: Recorder(), weight: 0.5, margin: 0.5)
+    #expect(choice == nil)
+    #expect(error as? D512RerankError == .invalidRequest(requestID: "bad"))
+  }
+
   @Test(arguments: [Double.nan, .infinity])
   func fusionKeepsDefaultOnNonFiniteInput(bad: Double) {
     #expect(D512Fusion.choose(engine: [0, -1], model: [0, bad], default: 0, weight: 0.5, margin: 0.5) == 0)

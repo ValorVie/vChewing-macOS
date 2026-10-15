@@ -38,14 +38,15 @@ func residentMB() -> (rss: Double, footprint: Double) {
   return (Double(info.resident_size) / 1_048_576, Double(info.phys_footprint) / 1_048_576)
 }
 
-func percentile(_ xs: [Double], _ p: Double) -> Double {
+// nil (JSON null) when empty: JSONSerialization aborts on NaN.
+func percentile(_ xs: [Double], _ p: Double) -> Double? {
   let q = xs.sorted()
-  return q.isEmpty ? .nan : q[min(q.count - 1, Int(p * Double(q.count)))] // same index rule as d512eval.py
+  return q.isEmpty ? nil : q[min(q.count - 1, Int(p * Double(q.count)))] // same index rule as d512eval.py
 }
 
-func median(_ xs: [Double]) -> Double {
+func median(_ xs: [Double]) -> Double? {
   let q = xs.sorted()
-  guard !q.isEmpty else { return .nan }
+  guard !q.isEmpty else { return nil }
   return q.count % 2 == 1 ? q[q.count / 2] : (q[q.count / 2 - 1] + q[q.count / 2]) / 2
 }
 
@@ -125,8 +126,8 @@ func run() throws -> Never {
     "candidates_over_1e-4": overTolerance,
     "fusion": ["weight": weight, "margin": margin, "winner_mismatches": winnerMismatch.count, "ids": Array(winnerMismatch.prefix(20))],
     "fallback_or_shape_mismatches": mismatches,
-    "latency_ms_8_candidates": ["n": latency8.count, "median": median(latency8), "p95": percentile(latency8, 0.95)],
-    "latency_ms_all": ["n": latencyAll.count, "median": median(latencyAll), "p95": percentile(latencyAll, 0.95)],
+    "latency_ms_8_candidates": ["n": latency8.count, "median": median(latency8).map { $0 as Any } ?? NSNull(), "p95": percentile(latency8, 0.95).map { $0 as Any } ?? NSNull()],
+    "latency_ms_all": ["n": latencyAll.count, "median": median(latencyAll).map { $0 as Any } ?? NSNull(), "p95": percentile(latencyAll, 0.95).map { $0 as Any } ?? NSNull()],
     "hash_verify_ms": hashMs, "session_create_ms": sessionMs, "intra_op_threads": threads,
     "memory_mb": [
       "rss_before_session": memBefore.rss, "rss_after_session": memAfterSession.rss, "rss_end": memEnd.rss,
@@ -134,7 +135,7 @@ func run() throws -> Never {
     ],
   ]
   print(String(decoding: try JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys]), as: UTF8.self))
-  let passed = mismatches.isEmpty && winnerMismatch.isEmpty && overGate == 0
+  let passed = compared > 0 && mismatches.isEmpty && winnerMismatch.isEmpty && overGate == 0
   if !passed {
     FileHandle.standardError.write(Data("""
     FAIL: \(overGate) candidates over tolerance \(tolerance), \(winnerMismatch.count) fusion winner mismatches, \

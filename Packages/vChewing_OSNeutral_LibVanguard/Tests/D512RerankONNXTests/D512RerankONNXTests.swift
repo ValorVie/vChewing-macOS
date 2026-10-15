@@ -62,8 +62,10 @@ struct D512RerankONNXTests {
   }
 
   /// Runs the built `D512Score` on the fixture against a report whose expected scores are shifted by `bias`.
-  private func scoreExitCode(bias: Double, extraArgs: [String] = []) throws -> Int32 {
-    let cases = try Fixture.load()
+  private func scoreExitCode(
+    bias: Double, extraArgs: [String] = [], onlyFallbacks: Bool = false, stdout: FileHandle = .nullDevice
+  ) throws -> Int32 {
+    let cases = try Fixture.load().filter { !onlyFallbacks || $0.expected_model == nil }
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("d512-score-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: dir) }
@@ -91,7 +93,7 @@ struct D512RerankONNXTests {
       "--model-dir", modelDir.path, "--requests", dir.appendingPathComponent("r.jsonl").path,
       "--report", dir.appendingPathComponent("p.json").path,
     ] + extraArgs
-    process.standardOutput = FileHandle.nullDevice
+    process.standardOutput = stdout
     process.standardError = FileHandle.nullDevice
     try process.run()
     process.waitUntilExit()
@@ -105,6 +107,13 @@ struct D512RerankONNXTests {
     #expect(try scoreExitCode(bias: 1e-3) == 1) // over the default 1e-4
     #expect(try scoreExitCode(bias: 1e-3, extraArgs: ["--tolerance", "1e-2"]) == 0)
     #expect(try scoreExitCode(bias: 100, extraArgs: ["--tolerance", "1e9"]) == 1) // fusion winners flip
+    // Nothing scored (all fallbacks): still prints a summary (null latencies, no NaN abort) and fails.
+    let pipe = Pipe()
+    #expect(try scoreExitCode(bias: 0, onlyFallbacks: true, stdout: pipe.fileHandleForWriting) == 1)
+    try pipe.fileHandleForWriting.close()
+    let summary = try JSONSerialization.jsonObject(with: pipe.fileHandleForReading.readDataToEndOfFile()) as? [String: Any]
+    #expect(summary?["compared_requests"] as? Int == 0)
+    #expect((summary?["latency_ms_all"] as? [String: Any])?["median"] is NSNull)
   }
 
   @available(macOS 14, *)

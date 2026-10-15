@@ -61,6 +61,8 @@ public struct D512Input: Equatable, Sendable {
 public enum D512RerankError: Error, Equatable, Sendable {
   /// The model returned NaN/±inf for a candidate; the whole request must keep the engine default.
   case nonFiniteScore(requestID: String, candidate: Int, value: Double)
+  /// No candidates, or `engine_default` out of range: there is no safe index to return.
+  case invalidRequest(requestID: String)
 }
 
 // MARK: - D512Scoring
@@ -153,8 +155,12 @@ public struct D512Vocab: Sendable {
 
   /// Fused pick for one request. Any scoring error (fallback-worthy model output, inference failure)
   /// keeps the engine default for the whole request and is returned alongside, never swallowed.
+  /// `choice` is nil only for an invalid request (no candidates / default out of range).
   public func rerank(_ req: D512Request, scorer: some D512Scoring, weight: Double, margin: Double)
-    -> (choice: Int, error: (any Error)?) {
+    -> (choice: Int?, error: (any Error)?) {
+    guard req.candidates.indices.contains(req.engineDefault) else {
+      return (nil, D512RerankError.invalidRequest(requestID: req.id))
+    }
     do {
       let model = try modelScores(req, scorer: scorer)
       let engine = req.candidates.map(\.log_score)
