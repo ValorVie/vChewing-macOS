@@ -1,6 +1,6 @@
-# 候選排序功能版建置與安裝指南
+# valor-feature 建置與安裝指南
 
-本指南適用於包含「依近期有效選字直接組字，候選最近者置首、其餘按累計次數排序」功能的程式碼版本，說明如何在 macOS 建置本機架構的 Release、備份原版、安裝並在 Obsidian 驗收。
+本指南適用於 `valor-feature` 分支，涵蓋個人選字偏好（依近期有效選字直接組字，候選最近者置首、其餘按累計次數排序）與 D512 句級重排，說明如何在 macOS 建置本機架構的 Release、備份原版、安裝並在 Obsidian 驗收。功能總覽，以及模型、論文、相依套件與評測語料的來源授權，見 [README](README.md) 的「valor-feature 分支：新增與異動功能」；D512 的模型下載、校正模式與校準細節見 [D512 句級重排安裝與校準](D512-RERANK.md)。
 
 **安裝會替換原有唯音。** 修改版沿用 `org.atelierInmu.inputmethod.vChewing` 與相同的輸入法 connection name，無法當作另一套唯音並存。請先完成備份。
 
@@ -17,9 +17,11 @@ env DEVELOPER_DIR="$VCH_DEVELOPER_DIR" xcrun swift --version
 env DEVELOPER_DIR="$VCH_DEVELOPER_DIR" xcrun xcodebuild -version
 ```
 
-確認所選版本包含候選排序功能，並記錄分支、HEAD、Swift 與 Xcode 版本；若有不明的程式碼修改，先核對再繼續。後續命令都在 repo 根目錄、同一個終端機 session 執行，以保留變數。
+確認目前在 `valor-feature` 分支（`git status` 第一行為 `## valor-feature`），並記錄分支、HEAD、Swift 與 Xcode 版本；若有不明的程式碼修改，先核對再繼續。後續命令都在 repo 根目錄、同一個終端機 session 執行，以保留變數。
 
 **Swift 6.4 以上為必要條件。** 版本不足時停止，選用符合需求的工具鏈後重新確認；不要降低 manifest 要求。`DEVELOPER_DIR` 只影響該命令，不需改全域 `xcode-select`。其他工具鏈組合及系統需求見 [README 系統需求](README.md#系統需求)。
+
+第一次建置時，SwiftPM 會從 `download.onnxruntime.ai` 下載 ONNX Runtime 1.30.0（D512 推論用，只在 macOS 宣告），並以 `Packages/vChewing_OSNeutral_LibVanguard/Package.swift` 內的 checksum 核對，因此需要網路。下載失敗或 checksum 不符時建置會停止；不要修改 checksum 來繞過。
 
 ## 2. 建置可安裝的 Release app
 
@@ -70,7 +72,7 @@ shasum -a 256 \
 
 三份 app 的簽章驗證都應成功；建置 IME 與內嵌 IME 的執行檔 hash 應相同。任何一項不符，先停止安裝並保留診斷。
 
-已知編譯診斷包括 `CandidateRankingStore` 的 `ActorIsolatedCall` 警告；此指南不宣稱該警告已消失。建置與簽章成功只確認產物，完成第 6 節的實機驗收後，才算驗證自己的環境。
+已知編譯診斷包括 `CandidateRankingStore` 的 `ActorIsolatedCall` 警告；此指南不宣稱該警告已消失。2026-10-15 以 `make release` 實測，另有一則連結警告：ONNX Runtime 靜態庫的最低系統版本是 macOS 14，app 的最低版本是 macOS 12。D512 只在執行期確認為 macOS 14 以上時才啟用（見 `Package.swift` 註解）。建置與簽章成功只確認產物，完成第 6 節的實機驗收後，才算驗證自己的環境。
 
 ## 4. 安裝前備份原版、設定與資料
 
@@ -81,7 +83,7 @@ shasum -a 256 \
 1. 前往 `~/Library/Input Methods`，將舊 `vChewing.app` 複製到備份資料夾。也核對 `/Library/Input Methods` 是否有同 connection name 的版本；若有，另行備份並記錄原安裝位置，避免混淆。
 2. 前往 `~/Library/Preferences`，若有 `org.atelierInmu.inputmethod.vChewing.plist`，複製並在備份內命名為 `preferences-global.plist`。
 3. 前往下列容器內的 `Preferences`；若有同名 plist，另存為 `preferences-container.plist`。
-4. 前往下列容器內的 `Application Support`，複製 `vChewing` 資料夾；另複製同層所有 `vChewing_override-model-data-*.dat*` 與 `vChewing_candidate-ranking-*.json` 檔案。這包含繁簡資料及 POM journal。
+4. 前往下列容器內的 `Application Support`，複製 `vChewing` 資料夾；另複製同層所有 `vChewing_override-model-data-*.dat*` 與 `vChewing_candidate-ranking-*.json` 檔案。這包含繁簡資料及 POM journal。若有 `vChewing/D512/` 子資料夾，裡面的 D512 模型與校準紀錄 `calibration.jsonl` 會隨 `vChewing` 資料夾一起備份；校準紀錄含個人打字資料，請妥善保存。
 5. 若偏好設定指定了自訂詞庫資料夾，另外複製該資料夾。記下第 6 節兩個排序選項的原始勾選狀態，方便回復。
 
 容器內的預設位置為：
@@ -167,7 +169,38 @@ shasum -a 256 \
 
 若結果不符，記錄版本、輸入模式、操作與候選順序，保留資料供核對；不要以清空歷史作為第一個處理步驟。安裝程式能開啟或簽章通過，都不能代替上述實機驗收。
 
-## 7. 回復備份的原版
+## 7. （選用）啟用 D512 句級重排並驗收
+
+D512 句級重排預設關閉，需要 macOS 14 以上。先完成第 6 節驗收，再依 [D512 句級重排安裝與校準](D512-RERANK.md) 下載固定版本模型、核對 SHA-256 並放進模型目錄。
+
+重新啟動唯音，在偏好設定的「候選字」頁設定：
+
+1. 勾選「使用 D512 句級重排（實驗性）」。缺檔、模型驗證失敗或系統版本不足時，開關停用並顯示原因。
+2. 「D512 校正模式」：「自動套用」（預設）會直接更換畫面句；「僅建議」只顯示 `⇥ 變動片段` 提示，按接受鍵才套用。接受視同手選，納入個人選字偏好；忽略不留學習紀錄。
+3. 「接受建議的按鍵」只在「僅建議」模式可設定：Tab（預設）、Ctrl+Tab，或右方向鍵（只在句尾接受，直排為下方向鍵）。
+4. 「記錄 D512 校準資料」只在需要校準時開啟；紀錄含個人打字資料。
+
+也可以先切換到其他輸入法並結束唯音行程，再用 `defaults` 設定後兩項。偏好實際存在 `~/Library/Preferences/org.atelierInmu.inputmethod.vChewing.plist`：
+
+```sh
+vch_prefs=org.atelierInmu.inputmethod.vChewing
+# 0：自動套用；1：僅建議
+defaults write "$vch_prefs" D512RerankMode -int 1
+# 0：Tab；1：Ctrl+Tab；2：右方向鍵（句尾）
+defaults write "$vch_prefs" D512SuggestionAcceptKey -int 0
+```
+
+在 Obsidian 驗收：
+
+1. 「自動套用」：輸入 2–32 音節的完整句子後停頓約 150 ms，模型差距夠大時畫面句會更換；已手選的區段不應被改。
+2. 「僅建議」：停頓後出現 `⇥ …` 提示，畫面句與游標不變；按接受鍵才套用。按其他鍵、Enter 或 Esc 應丟棄建議。
+3. 接受鍵為 Tab 時，沒有提示時按 Tab 不應改變組字，也不輪替候選；Shift+Tab 的反向輪替與選字窗內的 Tab 照舊。
+4. 接受鍵為右方向鍵時，句中按右方向鍵只移動游標，句尾才接受建議。
+5. 關閉 D512 開關應還原原有組句，保留讀音、游標與手選區段。
+
+組字區、候選窗與 `⇥` 提示都是獨立的浮動視窗。需要錄影回報時請錄全螢幕，只錄 app 視窗會看不到它們。
+
+## 8. 回復備份的原版
 
 先結束組字、儲存文字並切到 ABC。優先使用已保留的原版官方安裝程式重新安裝；若沒有，使用 app 備份：
 
@@ -179,10 +212,17 @@ shasum -a 256 \
 
 回復 app 時保留現有詞庫、POM 與排序 JSON；偏好設定及資料備份也繼續保存。不要整包覆寫資料，以免蓋掉安裝後新增的詞彙或設定。
 
+原版唯音沒有 D512 功能，不會讀取 `vChewing/D512/` 資料夾，也不使用 `UseD512SentenceRerank`、`D512RerankMode` 等偏好鍵。模型與校準紀錄留在原處，需要時再自行備份或移除。
+
 ## 命令與路徑來源
 
 - [Makefile](Makefile)：通用建置入口；`install-debug`／`install-release` 開啟既有安裝程式。
 - [BundleApps plugin](Plugins/BundleApps/plugin.swift)：本機架構 Release 建置、app 組裝、內嵌 IME 與簽章。
 - [InstallerVMProtocol](Packages/vChewing_InstallerAssembly4Darwin/Sources/InstallerAssembly4Darwin/InstallerVMProtocol.swift)、[InstallerShared](Packages/vChewing_InstallerAssembly4Darwin/Sources/InstallerAssembly4Darwin/InstallerShared.swift)：替換、註冊流程與使用者安裝位置。
 - [LXMgr_Utilities](Packages/vChewing_MainAssembly4Darwin/Sources/MainAssembly4Darwin/LXManager/LXMgr_Utilities.swift)、[UserDefaults helper](Packages/vChewing_OSNeutral_LibVanguard/Deps/VanguardSwiftExtension/Sources/SwiftExtension/SwiftFoundationImpl.swift)：資料路徑與偏好設定存取。
-- [繁體中文設定字串](Sources/vChewingIME_macOS/Resources/zh-Hant.lproj/Localizable.strings)：兩個排序選項的顯示文字。
+- [繁體中文設定字串](Sources/vChewingIME_macOS/Resources/zh-Hant.lproj/Localizable.strings)：兩個排序選項及 D512 各設定項的顯示文字。
+- [D512 句級重排安裝與校準](D512-RERANK.md)：模型下載、目錄、SHA-256、校正模式、接受鍵與校準紀錄。
+- [LibVanguard Package.swift](Packages/vChewing_OSNeutral_LibVanguard/Package.swift)：ONNX Runtime 1.30.0 的下載位址、checksum 與 macOS 14 執行期門檻。
+- [UserDef](Packages/vChewing_OSNeutral_LibVanguard/Sources/Shared/UserDef/UserDef.swift)：`UsePersonalCandidatePreference`、`UseD512SentenceRerank`、`D512RerankMode`、`D512SuggestionAcceptKey`、`LogD512Calibration` 等偏好鍵與預設值。
+- [CandidateSelectionLearning](Packages/vChewing_OSNeutral_LibVanguard/Sources/LibVanguard/InputHandler/CandidateSelectionLearning.swift)、[CandidateRankingStore](Packages/vChewing_OSNeutral_LibVanguard/Sources/LexiconAssembly/CandidateRankingStore.swift)：個人選字偏好的學習與存檔。
+- [D512SentenceRerank](Packages/vChewing_OSNeutral_LibVanguard/Sources/LibVanguard/InputHandler/D512SentenceRerank.swift)、[InputHandler_TriageInput](Packages/vChewing_OSNeutral_LibVanguard/Sources/LibVanguard/InputHandler/InputHandler_TriageInput.swift)：停頓重排、僅建議模式與接受鍵處理。

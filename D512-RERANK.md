@@ -12,14 +12,27 @@ status: experimental
 
 ## 建置與安裝
 
-在 repository 根目錄以 Swift 6.4 或更新工具鏈執行 `make release`。產物為 `Build/Products/Release/vChewing.app` 與 `vChewingInstaller.app`。依[建置與安裝指南](../../../BUILD-INSTALL.md)備份目前 app、偏好設定、詞庫、POM 與個人排序資料，再由使用者執行安裝程式。安裝後先保持兩個 D512 開關關閉。
+在 repository 根目錄以 Swift 6.4 或更新工具鏈執行 `make release`。產物為 `Build/Products/Release/vChewing.app` 與 `vChewingInstaller.app`。依[建置與安裝指南](BUILD-INSTALL.md)備份目前 app、偏好設定、詞庫、POM 與個人排序資料，再由使用者執行安裝程式。安裝後先保持兩個 D512 開關關閉。
+
+模型不在 repository 內，需另行下載。來源是 Hugging Face [`Funmula/0c-sequence-d512`](https://huggingface.co/Funmula/0c-sequence-d512)，模型卡名稱為「靈犀注音（0c）D512 選字模型（PF512）」，以 MIT 授權釋出（模型附帶的 `LICENSE`：Copyright (c) 2026 Funmula Corp Limited）。本功能只驗證過固定 revision `d512-pf512-20260926`（commit `66eb4a810c781258fc0cca3fe8b52819cf6a4693`），請下載這個 revision，不要取 `main`：
+
+```sh
+vch_model_source="$HOME/Downloads/d512-pf512-20260926"
+mkdir -p "$vch_model_source"
+for vch_file in model.onnx vocab.json manifest.json LICENSE; do
+  curl -fL -o "$vch_model_source/$vch_file" \
+    "https://huggingface.co/Funmula/0c-sequence-d512/resolve/d512-pf512-20260926/$vch_file"
+done
+```
+
+`model.onnx` 為 130,723,134 bytes（約 125 MiB）。模型論文為 Dewei Yen／Funmula〈小型 Transformer 用於具上下文的注音候選重排與標點還原〉（2026-10-08，[繁體中文版 v1](https://0c.biggo.com/research/d512/paper-zh-TW-v1.pdf)，CC BY 4.0）；推論使用 ONNX Runtime 1.30.0（Microsoft，MIT）。完整來源與授權見 [README](README.md) 的「valor-feature 分支：新增與異動功能」。
 
 模型目錄固定為輸入法行程的 `Application Support/vChewing/D512/d512-pf512-20260926/`，不受自訂詞庫目錄影響。SwiftPM 組裝的 app 啟用 sandbox，對應使用者磁碟位置如下：
 
 ```sh
 vch_support="$HOME/Library/Containers/org.atelierInmu.inputmethod.vChewing/Data/Library/Application Support"
 vch_model_target="$vch_support/vChewing/D512/d512-pf512-20260926"
-vch_model_source="/path/to/d512-pf512-20260926"
+vch_model_source="${vch_model_source:-$HOME/Downloads/d512-pf512-20260926}"
 
 # 先安裝並啟動過一次唯音，再切換到其他輸入法及結束唯音行程。
 # 若目標已有模型，先保留一份備份。
@@ -53,7 +66,7 @@ shasum -a 256 "$vch_model_target/model.onnx" "$vch_model_target/vocab.json"
 
 ### 切換客體後的第一句
 
-前文只存在記憶體，切換 App、輸入欄失焦或換 session 都會清空，所以切過去之後送出第一句以前，模型是在沒有前文的狀態下重排；之後每次送出都會累積前文。離線 held-out 7,190 句、w=0.5、baseline 82.43% 的實測（有前文取自 [A1 閘門報告](../reports/gate/gate-report.md)，無前文取自 [無前文重跑](../reports/noctx/report-noctx.md)）：
+前文只存在記憶體，切換 App、輸入欄失焦或換 session 都會清空，所以切過去之後送出第一句以前，模型是在沒有前文的狀態下重排；之後每次送出都會累積前文。離線 held-out 7,190 句、w=0.5、baseline 82.43% 的實測（有前文取自 [A1 閘門報告](DevLab/D512Eval/reports/gate/gate-report.md)，無前文取自 [無前文重跑](DevLab/D512Eval/reports/noctx/report-noctx.md)）：
 
 | 前文 | τ | 重排 top-1 | Δ (pp) | 有害／有益 | 閘門（≥ +3.0 pp 且有害 ≤ 有益 1/3） |
 | --- | --- | --- | --- | --- | --- |
@@ -104,7 +117,7 @@ suggest 的 rerank 列尚未套用，`applied=false`；Tab 接受後的後續列
 
 ## 重算融合與調整參數
 
-v1 使用 `raw + w × modelLogP + b × personalHits`。預設 w=0.5、τ=0.5、b=2.0；b 是待校準的初始值。切換客體後第一句若常被改壞，可先試 τ=1.0（見上文「切換客體後的第一句」）。既有 [Python harness](../harness/README.md) 的原始閘門只涵蓋 raw＋模型，不含個人加權；不要直接將 v1 紀錄當成原始閘門輸入。
+v1 使用 `raw + w × modelLogP + b × personalHits`。預設 w=0.5、τ=0.5、b=2.0；b 是待校準的初始值。切換客體後第一句若常被改壞，可先試 τ=1.0（見上文「切換客體後的第一句」）。既有 [Python harness](DevLab/D512Eval/harness/README.md) 的原始閘門只涵蓋 raw＋模型，不含個人加權；不要直接將 v1 紀錄當成原始閘門輸入。
 
 先複製紀錄。以下命令只用已記下的分數重算選擇，不需要再次推論。修改命令中的三個數值比較結果：
 

@@ -4,6 +4,8 @@
 
 ---
 
+> 本 fork 的 `valor-feature` 分支新增個人選字偏好與 D512 句級重排，說明、來源與授權見下方「valor-feature 分支：新增與異動功能」一節。
+
 有關該倉庫及該輸入法的最新資訊，請洽產品主頁：https://vchewing.github.io/
 
 該倉庫只能保證在 Gitee 有最新的內容可用：
@@ -39,6 +41,38 @@
 唯音分支專案及唯音詞庫（先鋒語料庫）由孫志貴（Shiki Suen）維護，其內容屬於可在 Gitee 公開展示的合法內容。但這些內容在被整理收入先鋒語料庫之前的原始資料的合規性不屬於維護者的負責範圍之內。
 
 > 資安宣告：唯音輸入法的 Shift 按鍵監測功能僅藉由對 NSEvent 訊號資料流的上下文關係的觀測來實現，僅接觸藉由 macOS 系統內建的 InputMethodKit 當中的 IMKServer 傳來的 NSEvent 訊號資料流、而無須監聽系統全局鍵盤事件，也無須向使用者申請用以達成這類「可能會引發資安疑慮」的行為所需的輔助權限，更不會將您的電腦內的任何資料傳出去（本來就是這樣，且自唯音 2.3.0 版引入的 Sandbox 特性更杜絕了這種可能性）。請放心使用。Shift 中英模式切換功能要求至少 macOS 10.15 Catalina 才可以用。
+
+## valor-feature 分支：新增與異動功能
+
+本節只適用於 [ValorVie/vChewing-macOS](https://github.com/ValorVie/vChewing-macOS) 的 `valor-feature` 分支。此分支以上游 `main`（`a700e6f7`）為基底，加入個人選字偏好與 D512 句級重排；未經上游審查，也不是唯音官方發行版。依木蘭寬鬆授權條款第 2 版第 3 條，若要把修改版另行發行，必須改用其他產品名稱。
+
+建置、備份、安裝、驗收與回復步驟見[建置與安裝指南](BUILD-INSTALL.md)；D512 的模型下載、校正模式與校準見 [D512 句級重排安裝與校準](D512-RERANK.md)。
+
+### 新增功能
+
+- **個人選字偏好**（設定「使用個人選字偏好」，預設開啟）：記住真正手動選取並遞交的字詞，預設組字改採近期偏好；選字窗內同讀音群組以最近選取者置首，其餘依累計次數排序。紀錄存成 `vChewing_candidate-ranking-cht.json`／`-chs.json`，與漸退記憶模組（POM）分開。
+- **D512 句級重排**（設定「使用 D512 句級重排（實驗性）」，預設關閉，需要 macOS 14 以上與另行下載的模型）：輸入停頓約 150 ms 後，用 D512 模型替 Homa 組句引擎的整句 k-best 候選評分，再與引擎分數、個人選字偏好融合，即 `raw + w × modelLogP + b × personalHits`，預設 w=0.5、τ=0.5、b=2.0。勝出句的差距大於 τ 才更換畫面句；手選區段不變。
+- **D512 校正模式**（預設「自動套用」）：「僅建議」模式不改畫面句，只以 `⇥ 變動片段` 提示，按接受鍵才套用。接受視同手選並納入學習；忽略則不留學習紀錄。
+- **接受建議的按鍵**（預設 Tab）：可選 Tab、Ctrl+Tab，或右方向鍵（只在句尾接受，直排為下方向鍵）。
+- **D512 校準紀錄**（設定「記錄 D512 校準資料」，預設關閉）：寫入 `Application Support/vChewing/D512/calibration.jsonl`，內容包含個人打字資料，供重算 w、τ、b。
+- **離線評測工具與證據**：`DevLab/D512Eval/` 收錄評測 harness、候選匯出 fixtures、公開語料測試集工具與 A1 閘門報告。held-out 7,190 句、w=0.5、τ=0.5 時，整句 top-1 由 82.43% 升到 86.59%（+4.16 pp，95% CI [+3.57, +4.76]），有害／有益覆蓋為 112／411 = 0.27，見[閘門報告](DevLab/D512Eval/reports/gate/gate-report.md)。這是離線合成讀音的結果，不等於實際打字收益。
+
+### 異動的既有行為
+
+- 開啟個人選字偏好時，預設組字與選字窗順序會依個人歷史改變；關閉後恢復原有行為，歷史保留。
+- 「僅建議」模式且接受鍵為 Tab 時，組字中的 Tab 只用來接受建議，沒有建議時不動作，不再就地輪替候選；選 Ctrl+Tab 時規則相同，無修飾鍵 Tab 維持輪替。Shift+Tab、選字窗內的 Tab、狂拼模式與「自動套用」模式的按鍵行為不變。
+- Homa 新增 k-best 路徑組裝，以及能以區段起點與長度指定候選的 `overrideCandidate(_:atSegment:segLength:…)`；既有的 `overrideCandidate` 呼叫行為不變。
+- 建置新增 ONNX Runtime 1.30.0 二進位相依（只在 macOS 宣告），SwiftPM 解析套件時會從 `download.onnxruntime.ai` 下載並以 checksum 核對。輸入法的最低系統需求仍是 macOS 12；D512 只在 macOS 14 以上啟用。
+
+### 來源與授權
+
+- **D512 模型**：Hugging Face [`Funmula/0c-sequence-d512`](https://huggingface.co/Funmula/0c-sequence-d512)，模型卡名稱為「靈犀注音（0c）D512 選字模型（PF512）」，MIT 授權，Copyright (c) 2026 Funmula Corp Limited。本分支只驗證固定 revision `d512-pf512-20260926`（commit `66eb4a810c781258fc0cca3fe8b52819cf6a4693`）；`model.onnx` 的 SHA-256 為 `71af1f0e77b2752cc71cbc04bf19c8e8f2e765662246f766e65a2822bab4e66e`，`vocab.json` 為 `556dffaffbf4c05211a846dcee55ef735cea68c5754f9bffcc6f9588124172b3`。repository 不含模型檔，下載方式見 [D512-RERANK.md](D512-RERANK.md)。
+- **模型論文**：Dewei Yen／Funmula，〈小型 Transformer 用於具上下文的注音候選重排與標點還原〉，2026-10-08，[繁體中文版 v1](https://0c.biggo.com/research/d512/paper-zh-TW-v1.pdf)，CC BY 4.0。本 repository 只收錄改寫摘要：[paper-summary.md](DevLab/D512Eval/testset/notes/paper-summary.md)。
+- **請求編碼**：評測 harness [`d512eval.py`](DevLab/D512Eval/harness/d512eval.py) 依模型卡的 Python 範例移植；Swift 端 [`D512Rerank.swift`](Packages/vChewing_OSNeutral_LibVanguard/Sources/D512Rerank/D512Rerank.swift) 再移植自該 harness。
+- **推論執行環境**：[ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.30.0，Microsoft，MIT 授權。使用官方 pod archive `https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.30.0.zip`，宣告與 checksum 見 [LibVanguard Package.swift](Packages/vChewing_OSNeutral_LibVanguard/Package.swift)。建置產物目前沒有附上 ONNX Runtime 的授權聲明；若要散布建置好的 app，請一併附上它的 MIT 授權全文。
+- **評測語料**：中文維基百科 `zh-tw` 變體的 64 個一般知識條目（CC BY-SA 4.0），以及 MozTW [cc0-sentences](https://github.com/moztw/cc0-sentences) 的 `zh-TW/g0v_slack_rand0m.txt`（CC0 1.0）。repository 只收錄 200 筆樣本 `DevLab/D512Eval/testset/data/sample.jsonl`；ONNX 等價性測試的 `held-out-fixture.json` 也取自同一測試集。抽樣衍生資料依 CC BY-SA 4.0 釋出，逐筆出處與修改說明見 [SOURCES.md](DevLab/D512Eval/testset/data/SOURCES.md)。
+- **讀音反查詞庫**：測試集讀音以唯音詞庫 vChewing-VanguardLexicon（commit `a7548f42ccdf523a2cc8ab533b3990561eba7288`）反查。
+- **「僅建議」互動**：停頓後顯示建議、按 Tab 才套用的互動，參考靈犀注音（0c）輸入法的校正提示。這是使用者實機使用時的觀察，未找到公開文件佐證。
 
 ## 系統需求
 
@@ -79,7 +113,7 @@
 
 ## 建置流程
 
-候選排序功能版的建置、備份、安裝與回復步驟，請見[候選排序功能版建置與安裝指南](BUILD-INSTALL.md)。
+`valor-feature` 分支（個人選字偏好與 D512 句級重排）的建置、備份、安裝與回復步驟，請見 [valor-feature 建置與安裝指南](BUILD-INSTALL.md)。
 
 安裝 Xcode 之後，請先配置 Xcode 允許其直接構建在專案所在的資料夾下的 build 資料夾內。步驟：
 ```
