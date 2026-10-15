@@ -1,0 +1,934 @@
+{
+  "artifacts": {
+    "dev": {
+      "bytes": 678657,
+      "sha256": "56d05aa4c7506c94497c519e10eea93d8b741a78675ccfbb879dd3708a707ae4"
+    },
+    "held-out": {
+      "bytes": 2701929,
+      "sha256": "c3eb19c58ecf8fb0ad67c64bb7cc361c562f3e4327d7d02b43c2416aa95911e1"
+    }
+  },
+  "filtering_overall": {
+    "attempted_segments": 52634,
+    "discard_ratio_denominator": "三種反查丟棄比例均以 attempted_segments 為分母；先排短句、未知字，再依 DP 路徑遇到的首個異讀原因分類，互斥計數",
+    "discarded_polyphonic_fallback_segments": 25994,
+    "discarded_tied_word_reading_segments": 7116,
+    "discarded_too_short_segments": 3408,
+    "discarded_unknown_segments": 8307,
+    "polyphonic_fallback_discard_ratio": 0.4938632822890147,
+    "punctuation_segments": 56042,
+    "segment_discard_ratio": 0.7998465436636808,
+    "tied_word_reading_discard_ratio": 0.1351977809020785,
+    "unknown_discard_ratio": 0.15782574001595925
+  },
+  "lexicon": {
+    "accepted_rows": 231709,
+    "character_types": 8489,
+    "direct_single_character_types": 0,
+    "files": [
+      {
+        "bytes": 21947,
+        "name": "phrases-custom-cht.txt",
+        "sha256": "fa79ec443bfa2fa392b4898e81a0d8412398b3f0d7d694f049bdce3eaf63b3c8"
+      },
+      {
+        "bytes": 88596,
+        "name": "phrases-custom-genshin-cht.txt",
+        "sha256": "0b62913d3dc2b3f95f40023d9964328a67b1c68ba14142df85e5d75f0becefe6"
+      },
+      {
+        "bytes": 4159,
+        "name": "phrases-custom-hk3rd-cht.txt",
+        "sha256": "72746b354c0dd2e25b639e90959299f5793fc775dc2dc08c89603197741a6201"
+      },
+      {
+        "bytes": 5284,
+        "name": "phrases-custom-narushio-cht.txt",
+        "sha256": "b14a7a12922b0ff2d55807d201f92cd233d9c638b7c89fcff115b7a720a3711d"
+      },
+      {
+        "bytes": 15193,
+        "name": "phrases-custom-seikyuutetsudou-cht.txt",
+        "sha256": "61899b6febac934a16b263dc7de35a378e07ccecdd077f0a255b4001550259a6"
+      },
+      {
+        "bytes": 2510,
+        "name": "phrases-custom-zzz-cht.txt",
+        "sha256": "5af0c439498e250d2ea3ce3f1c6de7a2f5c6bcaec507c115d92c46ac18b872af"
+      },
+      {
+        "bytes": 6003515,
+        "name": "phrases-moe-cht.txt",
+        "sha256": "50e2e5ceb89530f1ecec46f86674b1bee16069dc0c446f443b9e1096a2cbe124"
+      },
+      {
+        "bytes": 2135069,
+        "name": "phrases-tabe-cht.txt",
+        "sha256": "1ab54112dabb31d5a3196f91f578f450b784277a15a075c30d9f40e61cc44a62"
+      },
+      {
+        "bytes": 267429,
+        "name": "phrases-vchewing-cht.txt",
+        "sha256": "970a1d93e0c273ed4a3bb4611e54541c8dcc106c220e6bd2e969633d063c069f"
+      }
+    ],
+    "highest_frequency_tied_word_types": 12807,
+    "inline_comment_rows": 2,
+    "input_rows": 231742,
+    "particle_fallbacks": {
+      "了": "ㄌㄜ˙",
+      "吧": "ㄅㄚ˙",
+      "呢": "ㄋㄜ˙",
+      "嗎": "ㄇㄚ˙",
+      "的": "ㄉㄜ˙"
+    },
+    "polyphonic_character_types": 1808,
+    "polyphonic_definition": "同字在合法詞條投影中有至少兩種帶調讀音，含零頻與變調",
+    "rejected_row_locations": [
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 153
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 154
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 155
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 156
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 157
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 158
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 159
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 160
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 185
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 186
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 187
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 188
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 189
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 190
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 191
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 192
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 193
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 194
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 195
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 196
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 197
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 199
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 200
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 201
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 202
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 203
+      },
+      {
+        "file": "phrases-custom-cht.txt",
+        "line": 204
+      },
+      {
+        "file": "phrases-tabe-cht.txt",
+        "line": 30951
+      },
+      {
+        "file": "phrases-vchewing-cht.txt",
+        "line": 2459
+      },
+      {
+        "file": "phrases-vchewing-cht.txt",
+        "line": 2631
+      },
+      {
+        "file": "phrases-vchewing-cht.txt",
+        "line": 3242
+      },
+      {
+        "file": "phrases-vchewing-cht.txt",
+        "line": 6585
+      },
+      {
+        "file": "phrases-vchewing-cht.txt",
+        "line": 6586
+      }
+    ],
+    "rejected_rows": 33,
+    "revision": "a7548f42ccdf523a2cc8ab533b3990561eba7288",
+    "segmentation": {
+      "algorithm": "Viterbi/DAG",
+      "character_frequency": "現有最高頻投影讀音的累計頻次；助詞例外只改輸出讀音",
+      "filter_order": "先選最大分數路徑，再套既有丟棄規則；不改選次佳路徑",
+      "normalization_total": 1712945227,
+      "score": "sum(log(max(freq,1)/Z))",
+      "tie_break": "分數差至多 1e-12 視為同分，按路徑由左至右優先較長詞",
+      "zero_frequency_floor": 1
+    },
+    "single_character_policy": "單字 fallback 的投影讀音超過一種時丟棄整個標點分句；非多音字照舊；唯一例外是核准的五個助詞讀音",
+    "unique_word_readings": 231709,
+    "unique_words": 217614,
+    "word_policy": "正規化頻次 DP 選路徑後，選中最高頻並列異讀詞條時丟棄整句；最高頻唯一者照舊"
+  },
+  "limitations": [
+    "注音由詞庫正規化頻次 DP 分詞合成，尚未人工全面標音驗證",
+    "未核對未公開的 0c 訓練逐句資料",
+    "只做精確目標／前文與文件分組，未做 MinHash 近重複隔離",
+    "前文為來源文字，不模擬前次引擎錯誤；聊天句庫無可靠前文"
+  ],
+  "overall": {
+    "by_source": {
+      "moztw-g0v-cc0": 2225,
+      "wikipedia-zh-tw": 6759
+    },
+    "cases": 8984,
+    "cases_with_context": 6381,
+    "cases_with_polyphonic_characters": 8179,
+    "polyphonic_character_occurrence_ratio": 0.49939737681673163,
+    "polyphonic_character_occurrences": 28176,
+    "syllable_distribution": {
+      "2": 1302,
+      "3": 860,
+      "4": 1420,
+      "5": 888,
+      "6": 995,
+      "7": 783,
+      "8": 661,
+      "9": 527,
+      "10": 397,
+      "11": 295,
+      "12": 236,
+      "13": 178,
+      "14": 125,
+      "15": 90,
+      "16": 60,
+      "17": 44,
+      "18": 33,
+      "19": 30,
+      "20": 22,
+      "21": 17,
+      "22": 10,
+      "23": 3,
+      "25": 3,
+      "26": 1,
+      "27": 2,
+      "28": 1,
+      "32": 1
+    },
+    "syllables": 56420
+  },
+  "raw_sha256": "434bed46e9a819b21691691dfaccfd7fdec54f9454cd62049da7df069d280a99",
+  "sample_cases": 200,
+  "seed": 20261015,
+  "segmentation_comparison": {
+    "changed_ratio": 0.474789631601507,
+    "changed_segments": 21046,
+    "compared_segments": 44327,
+    "definition": "原始至少兩字、每字皆有投影讀音的標點分句；套丟棄規則之前比較完整詞／字切分",
+    "examples": [
+      {
+        "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1",
+        "dp": [
+          "也",
+          "可以",
+          "拿來",
+          "用"
+        ],
+        "dp_log_score": -35.562144252216584,
+        "greedy": [
+          "也可以",
+          "拿來",
+          "用"
+        ],
+        "greedy_log_score": -38.8135749830973,
+        "text": "也可以拿來用"
+      },
+      {
+        "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L100",
+        "dp": [
+          "會",
+          "講",
+          "阿",
+          "美語",
+          "的",
+          "人",
+          "真的",
+          "很",
+          "強",
+          "啊"
+        ],
+        "dp_log_score": -88.05180014227962,
+        "greedy": [
+          "會",
+          "講",
+          "阿美",
+          "語",
+          "的",
+          "人",
+          "真的",
+          "很",
+          "強",
+          "啊"
+        ],
+        "greedy_log_score": -88.53305088397825,
+        "text": "會講阿美語的人真的很強啊"
+      },
+      {
+        "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1000",
+        "dp": [
+          "協",
+          "作",
+          "會議",
+          "等",
+          "民主",
+          "創新",
+          "的",
+          "機制"
+        ],
+        "dp_log_score": -68.13601349586627,
+        "greedy": [
+          "協作",
+          "會議",
+          "等",
+          "民主",
+          "創新",
+          "的",
+          "機制"
+        ],
+        "greedy_log_score": -69.38632985035845,
+        "text": "協作會議等民主創新的機制"
+      },
+      {
+        "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1001",
+        "dp": [
+          "原本",
+          "一",
+          "間",
+          "會",
+          "遵守",
+          "新聞",
+          "道德",
+          "的",
+          "媒體",
+          "公司"
+        ],
+        "dp_log_score": -81.08381737648068,
+        "greedy": [
+          "原本",
+          "一間",
+          "會",
+          "遵守",
+          "新聞",
+          "道德",
+          "的",
+          "媒體",
+          "公司"
+        ],
+        "greedy_log_score": -89.67362242563404,
+        "text": "原本一間會遵守新聞道德的媒體公司"
+      },
+      {
+        "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1003",
+        "dp": [
+          "現在",
+          "小朋友",
+          "手",
+          "上"
+        ],
+        "dp_log_score": -29.512082610153442,
+        "greedy": [
+          "現在",
+          "小朋友",
+          "手上"
+        ],
+        "greedy_log_score": -38.15113639580657,
+        "text": "現在小朋友手上"
+      }
+    ]
+  },
+  "source_downloads": {
+    "moztw-g0v-cc0": {
+      "bytes": 217398,
+      "git_blob": "01eeef3ae42fb6697f1a9966c22a8e025c1010cd",
+      "license": "CC0-1.0",
+      "revision": "b473f2a3ee52920dce26d86cc02117479e257c18",
+      "sha256": "6bde40bb34ddc97b860876d03de1a04171787854bfb6aefaf596a0d2ded8086f",
+      "url": "https://raw.githubusercontent.com/moztw/cc0-sentences/b473f2a3ee52920dce26d86cc02117479e257c18/zh-TW/g0v_slack_rand0m.txt"
+    },
+    "wikipedia-zh-tw": {
+      "bytes": 21310404,
+      "license": "CC-BY-SA-4.0",
+      "limit_bytes": 67108864
+    }
+  },
+  "source_filtering": {
+    "moztw-g0v-cc0": {
+      "annotated_segments": 2233,
+      "attempted_segments": 9131,
+      "cases_before_deduplication": 2233,
+      "discarded_polyphonic_fallback_segments": 5343,
+      "discarded_tied_word_reading_segments": 1546,
+      "discarded_too_short_segments": 15,
+      "discarded_unknown_segments": 9,
+      "documents": 8882,
+      "particle_fallbacks": 589,
+      "polyphonic_fallback_discard_ratio": 0.585149490745811,
+      "punctuation_segments": 9146,
+      "segment_discard_ratio": 0.7558495517165974,
+      "segmentation_change_examples": [
+        {
+          "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1",
+          "dp": [
+            "也",
+            "可以",
+            "拿來",
+            "用"
+          ],
+          "dp_log_score": -35.562144252216584,
+          "greedy": [
+            "也可以",
+            "拿來",
+            "用"
+          ],
+          "greedy_log_score": -38.8135749830973,
+          "text": "也可以拿來用"
+        },
+        {
+          "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L100",
+          "dp": [
+            "會",
+            "講",
+            "阿",
+            "美語",
+            "的",
+            "人",
+            "真的",
+            "很",
+            "強",
+            "啊"
+          ],
+          "dp_log_score": -88.05180014227962,
+          "greedy": [
+            "會",
+            "講",
+            "阿美",
+            "語",
+            "的",
+            "人",
+            "真的",
+            "很",
+            "強",
+            "啊"
+          ],
+          "greedy_log_score": -88.53305088397825,
+          "text": "會講阿美語的人真的很強啊"
+        },
+        {
+          "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1000",
+          "dp": [
+            "協",
+            "作",
+            "會議",
+            "等",
+            "民主",
+            "創新",
+            "的",
+            "機制"
+          ],
+          "dp_log_score": -68.13601349586627,
+          "greedy": [
+            "協作",
+            "會議",
+            "等",
+            "民主",
+            "創新",
+            "的",
+            "機制"
+          ],
+          "greedy_log_score": -69.38632985035845,
+          "text": "協作會議等民主創新的機制"
+        },
+        {
+          "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1001",
+          "dp": [
+            "原本",
+            "一",
+            "間",
+            "會",
+            "遵守",
+            "新聞",
+            "道德",
+            "的",
+            "媒體",
+            "公司"
+          ],
+          "dp_log_score": -81.08381737648068,
+          "greedy": [
+            "原本",
+            "一間",
+            "會",
+            "遵守",
+            "新聞",
+            "道德",
+            "的",
+            "媒體",
+            "公司"
+          ],
+          "greedy_log_score": -89.67362242563404,
+          "text": "原本一間會遵守新聞道德的媒體公司"
+        },
+        {
+          "document": "moztw-g0v-cc0:01eeef3ae42fb6697f1a9966c22a8e025c1010cd:L1003",
+          "dp": [
+            "現在",
+            "小朋友",
+            "手",
+            "上"
+          ],
+          "dp_log_score": -29.512082610153442,
+          "greedy": [
+            "現在",
+            "小朋友",
+            "手上"
+          ],
+          "greedy_log_score": -38.15113639580657,
+          "text": "現在小朋友手上"
+        }
+      ],
+      "segmentation_changed_segments": 4540,
+      "segmentation_compared_segments": 9122,
+      "single_character_fallbacks": 1663,
+      "tied_word_reading_discard_ratio": 0.1693133282225386,
+      "unknown_characters_top20": [
+        [
+          "Ｔ",
+          1
+        ],
+        [
+          "鰜",
+          1
+        ],
+        [
+          "衆",
+          1
+        ],
+        [
+          "説",
+          1
+        ],
+        [
+          "⽣",
+          1
+        ],
+        [
+          "⼤",
+          1
+        ],
+        [
+          "ㄧ",
+          1
+        ],
+        [
+          "玟",
+          1
+        ],
+        [
+          "羡",
+          1
+        ]
+      ],
+      "unknown_discard_ratio": 0.0009856532690833424,
+      "word_matched_characters": 12465,
+      "word_matches": 5845
+    },
+    "wikipedia-zh-tw": {
+      "annotated_segments": 8984,
+      "attempted_segments": 43503,
+      "cases_before_deduplication": 8985,
+      "discarded_polyphonic_fallback_segments": 20651,
+      "discarded_tied_word_reading_segments": 5570,
+      "discarded_too_short_segments": 3393,
+      "discarded_unknown_segments": 8298,
+      "documents": 64,
+      "particle_fallbacks": 1830,
+      "polyphonic_fallback_discard_ratio": 0.4747028940532837,
+      "punctuation_segments": 46896,
+      "segment_discard_ratio": 0.8084271579665643,
+      "segmentation_change_examples": [
+        {
+          "document": "wikipedia-zh-tw:1087",
+          "dp": [
+            "曆法",
+            "是",
+            "以",
+            "日",
+            "為",
+            "基礎",
+            "單位",
+            "計算",
+            "時間",
+            "的",
+            "方法"
+          ],
+          "dp_log_score": -92.46760843559213,
+          "greedy": [
+            "曆法",
+            "是以",
+            "日",
+            "為",
+            "基礎",
+            "單位",
+            "計算",
+            "時間",
+            "的",
+            "方法"
+          ],
+          "greedy_log_score": -95.73516591285733,
+          "text": "曆法是以日為基礎單位計算時間的方法"
+        },
+        {
+          "document": "wikipedia-zh-tw:1087",
+          "dp": [
+            "一日",
+            "以內",
+            "的",
+            "時間",
+            "計算",
+            "為",
+            "計時"
+          ],
+          "dp_log_score": -65.54341910374536,
+          "greedy": [
+            "一日",
+            "以內",
+            "的",
+            "時間",
+            "計算為",
+            "計時"
+          ],
+          "greedy_log_score": -65.7048351599839,
+          "text": "一日以內的時間計算為計時"
+        },
+        {
+          "document": "wikipedia-zh-tw:1087",
+          "dp": [
+            "陰曆",
+            "和",
+            "陰陽曆",
+            "三",
+            "種"
+          ],
+          "dp_log_score": -57.45802364771191,
+          "greedy": [
+            "陰曆",
+            "和",
+            "陰陽曆",
+            "三種"
+          ],
+          "greedy_log_score": -63.2527734805532,
+          "text": "陰曆和陰陽曆三種"
+        },
+        {
+          "document": "wikipedia-zh-tw:1087",
+          "dp": [
+            "其",
+            "曆",
+            "年",
+            "為",
+            "一個",
+            "回歸",
+            "年"
+          ],
+          "dp_log_score": -54.87934019348475,
+          "greedy": [
+            "其",
+            "曆",
+            "年",
+            "為",
+            "一個",
+            "回歸年"
+          ],
+          "greedy_log_score": -58.430267693261534,
+          "text": "其曆年為一個回歸年"
+        },
+        {
+          "document": "wikipedia-zh-tw:1087",
+          "dp": [
+            "現",
+            "時",
+            "國際",
+            "通用",
+            "的",
+            "公",
+            "曆"
+          ],
+          "dp_log_score": -55.75486859789473,
+          "greedy": [
+            "現時",
+            "國際",
+            "通用",
+            "的",
+            "公曆"
+          ],
+          "greedy_log_score": -60.95461254245159,
+          "text": "現時國際通用的公曆"
+        }
+      ],
+      "segmentation_changed_segments": 16506,
+      "segmentation_compared_segments": 35205,
+      "single_character_fallbacks": 6292,
+      "tied_word_reading_discard_ratio": 0.1280371468634347,
+      "unknown_characters_top20": [
+        [
+          "0",
+          3215
+        ],
+        [
+          "e",
+          2939
+        ],
+        [
+          "a",
+          2799
+        ],
+        [
+          "1",
+          2639
+        ],
+        [
+          "s",
+          2492
+        ],
+        [
+          "l",
+          2469
+        ],
+        [
+          "i",
+          2338
+        ],
+        [
+          "t",
+          2303
+        ],
+        [
+          " ",
+          2110
+        ],
+        [
+          "y",
+          1743
+        ],
+        [
+          "r",
+          1508
+        ],
+        [
+          "2",
+          1442
+        ],
+        [
+          "o",
+          1373
+        ],
+        [
+          "n",
+          1301
+        ],
+        [
+          "d",
+          1162
+        ],
+        [
+          "p",
+          1133
+        ],
+        [
+          "9",
+          1071
+        ],
+        [
+          "c",
+          992
+        ],
+        [
+          "5",
+          895
+        ],
+        [
+          "m",
+          883
+        ]
+      ],
+      "unknown_discard_ratio": 0.19074546582994276,
+      "word_matched_characters": 41329,
+      "word_matches": 19190
+    }
+  },
+  "split_policy": {
+    "actual_dev_fraction": 0.19968833481745324,
+    "deduplication_key": "gold",
+    "dev_fraction_by_source": {
+      "moztw-g0v-cc0": 0.2,
+      "wikipedia-zh-tw": 0.19958573753513834
+    },
+    "document_groups": 2247,
+    "duplicate_retention": "保留產生器遍歷順序中的第一次出現",
+    "duplicates_removed": {
+      "moztw-g0v-cc0": 8,
+      "wikipedia-zh-tw": 2226
+    },
+    "grouping": "先以 gold 全域去重，再按文件分組；同文件不跨 split；依來源分層 dev",
+    "largest_group_cases": 691,
+    "target_dev_fraction": 0.2
+  },
+  "splits": {
+    "dev": {
+      "by_source": {
+        "moztw-g0v-cc0": 445,
+        "wikipedia-zh-tw": 1349
+      },
+      "cases": 1794,
+      "cases_with_context": 1278,
+      "cases_with_polyphonic_characters": 1659,
+      "polyphonic_character_occurrence_ratio": 0.5146585471944324,
+      "polyphonic_character_occurrences": 5916,
+      "syllable_distribution": {
+        "2": 219,
+        "3": 160,
+        "4": 304,
+        "5": 180,
+        "6": 203,
+        "7": 152,
+        "8": 147,
+        "9": 116,
+        "10": 87,
+        "11": 55,
+        "12": 44,
+        "13": 28,
+        "14": 35,
+        "15": 22,
+        "16": 11,
+        "17": 10,
+        "18": 3,
+        "19": 3,
+        "20": 6,
+        "21": 4,
+        "22": 4,
+        "23": 1
+      },
+      "syllables": 11495
+    },
+    "held-out": {
+      "by_source": {
+        "moztw-g0v-cc0": 1780,
+        "wikipedia-zh-tw": 5410
+      },
+      "cases": 7190,
+      "cases_with_context": 5103,
+      "cases_with_polyphonic_characters": 6520,
+      "polyphonic_character_occurrence_ratio": 0.4954924874791319,
+      "polyphonic_character_occurrences": 22260,
+      "syllable_distribution": {
+        "2": 1083,
+        "3": 700,
+        "4": 1116,
+        "5": 708,
+        "6": 792,
+        "7": 631,
+        "8": 514,
+        "9": 411,
+        "10": 310,
+        "11": 240,
+        "12": 192,
+        "13": 150,
+        "14": 90,
+        "15": 68,
+        "16": 49,
+        "17": 34,
+        "18": 30,
+        "19": 27,
+        "20": 16,
+        "21": 13,
+        "22": 6,
+        "23": 2,
+        "25": 3,
+        "26": 1,
+        "27": 2,
+        "28": 1,
+        "32": 1
+      },
+      "syllables": 44925
+    }
+  },
+  "status": "已產生並自檢",
+  "validation": {
+    "data/generated/dev.jsonl": 1794,
+    "data/generated/held-out.jsonl": 7190
+  }
+}

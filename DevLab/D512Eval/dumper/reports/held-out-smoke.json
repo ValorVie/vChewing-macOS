@@ -1,0 +1,64 @@
+{
+  "input_path": "DevLab/D512Eval/dumper/.cache/held-out.jsonl",
+  "input_sha256": "c3eb19c58ecf8fb0ad67c64bb7cc361c562f3e4327d7d02b43c2416aa95911e1",
+  "input_cases": 7190,
+  "factory_sha256": "b7d11e9661fd3120edf74e5789170a89d9df860744dc9531ae2ea23a15b604d9",
+  "configuration": "release",
+  "modes": {
+    "span": {
+      "exit_code": 0,
+      "elapsed_seconds": 51.965,
+      "summary": {
+        "event": "summary",
+        "mode": "span",
+        "processed": 7190,
+        "requests": 23608,
+        "skip_reasons": {},
+        "skipped": 0,
+        "succeeded": 7190
+      },
+      "skipped_cases": [],
+      "output_path": "DevLab/D512Eval/dumper/.cache/held-out-span.jsonl",
+      "stderr_path": "/tmp/d512-equivalence-200-e6m5vj78/held-out-span.stderr",
+      "output_sha256": "26dd97b28db34fe6fd44550259033a4c5ce518a810f927a4742661233069ef36"
+    },
+    "nbest": {
+      "exit_code": 0,
+      "elapsed_seconds": 54.541,
+      "summary": {
+        "event": "summary",
+        "mode": "nbest",
+        "processed": 7190,
+        "requests": 7190,
+        "skip_reasons": {},
+        "skipped": 0,
+        "succeeded": 7190
+      },
+      "skipped_cases": [],
+      "output_path": "DevLab/D512Eval/dumper/.cache/held-out-nbest.jsonl",
+      "stderr_path": "/tmp/d512-equivalence-200-e6m5vj78/held-out-nbest.stderr",
+      "output_sha256": "0497a387a0042414a04df2048b350c887028b2faf866d0d617f8747c04013e1c"
+    }
+  },
+  "schema_check": {
+    "exit_code": 0,
+    "log_path": "/tmp/d512-equivalence-200-e6m5vj78/held-out-schema.log"
+  },
+  "source_dataset_path": "DevLab/D512Eval/testset/data/generated/held-out.jsonl",
+  "failing_case_id": "d512-003a6e0b826f8b78c0e8a0db",
+  "failing_case_result": {
+    "span": {
+      "exit_code": 0,
+      "requests": 6,
+      "skipped": 0
+    },
+    "nbest": {
+      "exit_code": 0,
+      "requests": 1,
+      "skipped": 0
+    }
+  },
+  "baseline_input": "incremental insertKey per completed syllable; Homa automatically assigns nodes and assembles; no full refresh",
+  "equivalence_report": "DevLab/D512Eval/dumper/reports/held-out-equivalence-200.json",
+  "reference_differences_report": "DevLab/D512Eval/dumper/reports/longbatch-reference-differences.json"
+}

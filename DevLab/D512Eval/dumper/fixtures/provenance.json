@@ -1,0 +1,21 @@
+{
+  "lexicon_repository": "https://github.com/vChewing/vChewing-VanguardLexicon.git",
+  "lexicon_tag": "4.8.8",
+  "lexicon_commit": "a7548f42ccdf523a2cc8ab533b3990561eba7288",
+  "factory_sha256": "b7d11e9661fd3120edf74e5789170a89d9df860744dc9531ae2ea23a15b604d9",
+  "factory_bytes": 13882818,
+  "toolchain": "Apple Swift 6.4 (swiftlang-6.4.0.25.4)",
+  "base_commit": "8b0daea7e6399a3baa0cdf7b7dee5b1fc909fae8",
+  "mode_nbest_k": 8,
+  "files": {
+    "cases.jsonl": "c9d86941b12c398db7580bf90cb477cfebb1bdbc70321e3fdf4aee02be39e5a2",
+    "span.jsonl": "ccadafdaaf9cca788309ab34abad1b14cf616c8b7e63c6b1f50a768c4ebab99a",
+    "nbest.jsonl": "3b0e43db9dfdad59e1a0cb5ad6cb8235f5dfd7dabe6d6a8f194560c3a74e3592",
+    "equivalence.json": "e60c3fb8e996aa88c168afe8e10db3c93090c954623502c1a2135890562167fd"
+  },
+  "factory_path": "DevLab/D512Eval/dumper/.cache/VanguardFactoryDict4Typing.txtMap",
+  "fixture_directory": "DevLab/D512Eval/dumper/fixtures",
+  "baseline": "factory-only CHT pure unigram; no POM/personal candidate learning; weaker than personalized daily engine",
+  "span_scoring": "same-node gram score; no override weighting; candidate 0 must have maximum log_score",
+  "equivalence_reference": "LXFacade.connectToTestFactoryDictionary + LXFactoryGramSupplier(.cht / isCHS=false)"
+}

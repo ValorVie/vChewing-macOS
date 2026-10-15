@@ -1,0 +1,4 @@
+# 匯出的請求與逐請求 JSON 可由 run-gate.sh 重產，體積大，不入庫
+*.jsonl
+report-*.json
+logs/

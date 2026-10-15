@@ -1,0 +1,396 @@
+{
+  "baseline" : "factory-only CHT pure unigram; no POM\/personal candidate learning",
+  "cases" : [
+    {
+      "assembled" : [
+        "你好"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-01",
+      "log_score" : -9.32,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 2,
+          "full_candidate_count" : 21,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "我",
+        "愛",
+        "城市"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-02",
+      "log_score" : -13.656,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 4,
+          "full_candidate_count" : 4,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            1
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 33,
+          "full_candidate_count" : 33,
+          "full_fetch_equal" : true,
+          "span" : [
+            1,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 4,
+          "full_candidate_count" : 42,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "新聞",
+        "消息"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-03",
+      "log_score" : -6.867,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 3,
+          "full_candidate_count" : 28,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 64,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "試試",
+        "的",
+        "消息"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-04",
+      "log_score" : -13.207,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 10,
+          "full_candidate_count" : 88,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 3,
+          "full_candidate_count" : 3,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            3
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 64,
+          "full_fetch_equal" : true,
+          "span" : [
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "今天",
+        "的",
+        "天氣"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-05",
+      "log_score" : -12.052,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 2,
+          "full_candidate_count" : 25,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 3,
+          "full_candidate_count" : 3,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            3
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 2,
+          "full_candidate_count" : 10,
+          "full_fetch_equal" : true,
+          "span" : [
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "重新",
+        "開始"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-06",
+      "log_score" : -6.329,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 12,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 2,
+          "full_candidate_count" : 9,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "銀行",
+        "利率"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-07",
+      "log_score" : -6.966,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 38,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 127,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "學習",
+        "注音"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-08",
+      "log_score" : -8.32,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 17,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 2,
+          "full_candidate_count" : 48,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "開會",
+        "時間"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-09",
+      "log_score" : -6.797000000000001,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 1,
+          "full_candidate_count" : 8,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            2
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 3,
+          "full_candidate_count" : 38,
+          "full_fetch_equal" : true,
+          "span" : [
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "assembled" : [
+        "嗎",
+        "呢"
+      ],
+      "assembled_equal" : true,
+      "id" : "hand-10",
+      "log_score" : -10.25,
+      "score_equal" : true,
+      "spans" : [
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 11,
+          "full_candidate_count" : 11,
+          "full_fetch_equal" : true,
+          "span" : [
+            0,
+            1
+          ]
+        },
+        {
+          "differences" : [
+
+          ],
+          "eligible_candidate_count" : 3,
+          "full_candidate_count" : 3,
+          "full_fetch_equal" : true,
+          "span" : [
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  ],
+  "factory_bytes" : 13882818,
+  "reference" : "LXFacade.connectToTestFactoryDictionary + LXFactoryGramSupplier(.cht \/ isCHS=false)",
+  "total_candidates_compared" : 696,
+  "total_cases" : 10,
+  "total_spans" : 22
+}

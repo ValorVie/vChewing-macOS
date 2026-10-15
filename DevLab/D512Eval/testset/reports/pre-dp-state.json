@@ -1,0 +1,130 @@
+{
+  "filtering_overall": {
+    "attempted_segments": 52634,
+    "discard_ratio_denominator": "三種反查丟棄比例均以 attempted_segments 為分母；先排短句、未知字，再依反查遇到的首個異讀原因分類，互斥計數",
+    "discarded_polyphonic_fallback_segments": 19949,
+    "discarded_tied_word_reading_segments": 9722,
+    "discarded_too_short_segments": 3408,
+    "discarded_unknown_segments": 8307,
+    "polyphonic_fallback_discard_ratio": 0.3790135653759927,
+    "punctuation_segments": 56042,
+    "segment_discard_ratio": 0.7384818528960423,
+    "tied_word_reading_discard_ratio": 0.1847095033628453,
+    "unknown_discard_ratio": 0.15782574001595925
+  },
+  "reviewer_failures": [
+    {
+      "context": "the art of transformation",
+      "gold": "阿拉伯語中的",
+      "id": "d512-f4589c227ca94cd23a4a8038",
+      "reading": [
+        "ㄚ",
+        "ㄌㄚ",
+        "ㄅㄛˊ",
+        "ㄩˇ",
+        "ㄓㄨㄥˋ",
+        "ㄉㄧˋ"
+      ],
+      "source": "中文維基百科〈化學〉貢獻者; CC-BY-SA-4.0; https://zh.wikipedia.org/w/index.php?oldid=94641385; zh-tw 變體、擷取段落、切句並以 vChewing 詞庫合成注音"
+    }
+  ],
+  "revision": "正規化 DP 修正前",
+  "seed": 20261015,
+  "sha256": {
+    "data/generated/dev.jsonl": "d340ad036fea660630afc017ec3f185bc6612cd7098fa986cefebc52cf637f5d",
+    "data/generated/held-out.jsonl": "a3965023833457233345a544ab3dd4bafd393a7647ea3276e131eb7a013acf24",
+    "data/generated/split-manifest.json": "d8bd6a6df9b52d5f1d7f668ea3d98e7b4fba463c594095cc51e86cbbe61ae552",
+    "data/raw/documents.jsonl": "434bed46e9a819b21691691dfaccfd7fdec54f9454cd62049da7df069d280a99",
+    "data/raw/download-manifest.json": "83c6004c81bd13645c55186d508660f7120eb3c5d9f97b3bf2b8cb574368204f",
+    "data/sample.jsonl": "ef7d0386c87f7d35d56ec599fd47e723b67bf185e0e90e67f74a14ca72c83fa6",
+    "reports/lexicon-stats.json": "07c76df318174cfa3f9e417ab7898149b057402c58d638d81b101511b8232469",
+    "reports/stats.json": "c73de0a8f74b2a8b8c13386c1077750fc7910ca9b8ae9c42e3257d9b4fe2e544"
+  },
+  "splits": {
+    "dev": {
+      "by_source": {
+        "moztw-g0v-cc0": 658,
+        "wikipedia-zh-tw": 1793
+      },
+      "cases": 2451,
+      "cases_with_context": 1705,
+      "cases_with_polyphonic_characters": 2246,
+      "polyphonic_character_occurrence_ratio": 0.49248845501841354,
+      "polyphonic_character_occurrences": 8425,
+      "syllable_distribution": {
+        "10": 119,
+        "11": 104,
+        "12": 81,
+        "13": 69,
+        "14": 42,
+        "15": 44,
+        "16": 30,
+        "17": 23,
+        "18": 19,
+        "19": 14,
+        "2": 322,
+        "20": 13,
+        "21": 8,
+        "22": 2,
+        "24": 1,
+        "25": 3,
+        "26": 1,
+        "27": 1,
+        "29": 1,
+        "3": 197,
+        "32": 1,
+        "4": 340,
+        "5": 223,
+        "6": 249,
+        "7": 212,
+        "8": 184,
+        "9": 148
+      },
+      "syllables": 17107
+    },
+    "held-out": {
+      "by_source": {
+        "moztw-g0v-cc0": 2632,
+        "wikipedia-zh-tw": 7203
+      },
+      "cases": 9835,
+      "cases_with_context": 6744,
+      "cases_with_polyphonic_characters": 9235,
+      "polyphonic_character_occurrence_ratio": 0.5360311238173834,
+      "polyphonic_character_occurrences": 36374,
+      "syllable_distribution": {
+        "10": 514,
+        "11": 398,
+        "12": 315,
+        "13": 227,
+        "14": 198,
+        "15": 124,
+        "16": 93,
+        "17": 65,
+        "18": 50,
+        "19": 44,
+        "2": 1149,
+        "20": 46,
+        "21": 28,
+        "22": 19,
+        "23": 8,
+        "24": 3,
+        "25": 6,
+        "26": 3,
+        "27": 3,
+        "28": 4,
+        "29": 1,
+        "3": 780,
+        "30": 2,
+        "32": 6,
+        "4": 1407,
+        "5": 931,
+        "6": 1112,
+        "7": 895,
+        "8": 730,
+        "9": 674
+      },
+      "syllables": 67858
+    }
+  }
+}

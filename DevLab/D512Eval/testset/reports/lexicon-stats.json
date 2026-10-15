@@ -1,0 +1,213 @@
+{
+  "accepted_rows": 231709,
+  "character_types": 8489,
+  "direct_single_character_types": 0,
+  "files": [
+    {
+      "bytes": 21947,
+      "name": "phrases-custom-cht.txt",
+      "sha256": "fa79ec443bfa2fa392b4898e81a0d8412398b3f0d7d694f049bdce3eaf63b3c8"
+    },
+    {
+      "bytes": 88596,
+      "name": "phrases-custom-genshin-cht.txt",
+      "sha256": "0b62913d3dc2b3f95f40023d9964328a67b1c68ba14142df85e5d75f0becefe6"
+    },
+    {
+      "bytes": 4159,
+      "name": "phrases-custom-hk3rd-cht.txt",
+      "sha256": "72746b354c0dd2e25b639e90959299f5793fc775dc2dc08c89603197741a6201"
+    },
+    {
+      "bytes": 5284,
+      "name": "phrases-custom-narushio-cht.txt",
+      "sha256": "b14a7a12922b0ff2d55807d201f92cd233d9c638b7c89fcff115b7a720a3711d"
+    },
+    {
+      "bytes": 15193,
+      "name": "phrases-custom-seikyuutetsudou-cht.txt",
+      "sha256": "61899b6febac934a16b263dc7de35a378e07ccecdd077f0a255b4001550259a6"
+    },
+    {
+      "bytes": 2510,
+      "name": "phrases-custom-zzz-cht.txt",
+      "sha256": "5af0c439498e250d2ea3ce3f1c6de7a2f5c6bcaec507c115d92c46ac18b872af"
+    },
+    {
+      "bytes": 6003515,
+      "name": "phrases-moe-cht.txt",
+      "sha256": "50e2e5ceb89530f1ecec46f86674b1bee16069dc0c446f443b9e1096a2cbe124"
+    },
+    {
+      "bytes": 2135069,
+      "name": "phrases-tabe-cht.txt",
+      "sha256": "1ab54112dabb31d5a3196f91f578f450b784277a15a075c30d9f40e61cc44a62"
+    },
+    {
+      "bytes": 267429,
+      "name": "phrases-vchewing-cht.txt",
+      "sha256": "970a1d93e0c273ed4a3bb4611e54541c8dcc106c220e6bd2e969633d063c069f"
+    }
+  ],
+  "highest_frequency_tied_word_types": 12807,
+  "inline_comment_rows": 2,
+  "input_rows": 231742,
+  "particle_fallbacks": {
+    "了": "ㄌㄜ˙",
+    "吧": "ㄅㄚ˙",
+    "呢": "ㄋㄜ˙",
+    "嗎": "ㄇㄚ˙",
+    "的": "ㄉㄜ˙"
+  },
+  "polyphonic_character_types": 1808,
+  "polyphonic_definition": "同字在合法詞條投影中有至少兩種帶調讀音，含零頻與變調",
+  "rejected_row_locations": [
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 153
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 154
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 155
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 156
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 157
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 158
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 159
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 160
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 185
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 186
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 187
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 188
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 189
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 190
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 191
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 192
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 193
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 194
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 195
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 196
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 197
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 199
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 200
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 201
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 202
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 203
+    },
+    {
+      "file": "phrases-custom-cht.txt",
+      "line": 204
+    },
+    {
+      "file": "phrases-tabe-cht.txt",
+      "line": 30951
+    },
+    {
+      "file": "phrases-vchewing-cht.txt",
+      "line": 2459
+    },
+    {
+      "file": "phrases-vchewing-cht.txt",
+      "line": 2631
+    },
+    {
+      "file": "phrases-vchewing-cht.txt",
+      "line": 3242
+    },
+    {
+      "file": "phrases-vchewing-cht.txt",
+      "line": 6585
+    },
+    {
+      "file": "phrases-vchewing-cht.txt",
+      "line": 6586
+    }
+  ],
+  "rejected_rows": 33,
+  "revision": "a7548f42ccdf523a2cc8ab533b3990561eba7288",
+  "segmentation": {
+    "algorithm": "Viterbi/DAG",
+    "character_frequency": "現有最高頻投影讀音的累計頻次；助詞例外只改輸出讀音",
+    "filter_order": "先選最大分數路徑，再套既有丟棄規則；不改選次佳路徑",
+    "normalization_total": 1712945227,
+    "score": "sum(log(max(freq,1)/Z))",
+    "tie_break": "分數差至多 1e-12 視為同分，按路徑由左至右優先較長詞",
+    "zero_frequency_floor": 1
+  },
+  "single_character_policy": "單字 fallback 的投影讀音超過一種時丟棄整個標點分句；非多音字照舊；唯一例外是核准的五個助詞讀音",
+  "unique_word_readings": 231709,
+  "unique_words": 217614,
+  "word_policy": "正規化頻次 DP 選路徑後，選中最高頻並列異讀詞條時丟棄整句；最高頻唯一者照舊"
+}

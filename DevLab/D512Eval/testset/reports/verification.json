@@ -1,0 +1,167 @@
+{
+  "arabic_segmentation": {
+    "gold": "阿拉伯語中的",
+    "segments": [
+      "阿拉伯語",
+      "中",
+      "的"
+    ],
+    "status": "分詞修正後依既有多音字 fallback 規則整句丟棄"
+  },
+  "commands": [
+    "uv run --directory DevLab/D512Eval/testset --offline --no-sync python scripts/generate.py",
+    "uv run --directory DevLab/D512Eval/testset --offline --no-sync python scripts/validate.py data/generated/dev.jsonl data/generated/held-out.jsonl --minimum-held-out 3000",
+    "uv run --directory DevLab/D512Eval/testset --offline --no-sync python -m unittest discover -s tests -v",
+    "uv run --directory DevLab/D512Eval/testset --offline --no-sync python scripts/verify.py --reproduce"
+  ],
+  "commit_created": false,
+  "document_overlap": 0,
+  "gitignore_verified": {
+    ".venv": true,
+    "data/generated": true,
+    "data/raw": true,
+    "tmp": true
+  },
+  "gold_overlap": 0,
+  "held_out_minimum": 3000,
+  "known_review_failures": [
+    {
+      "after_reading": null,
+      "before_reading": [
+        "ㄩㄢˊ",
+        "ㄌㄞˊ",
+        "ㄊㄧㄝ",
+        "ㄌㄧㄠˇ",
+        "ㄒㄧㄣ",
+        "ㄨㄣˊ",
+        "ㄇㄟˊ",
+        "ㄕˋ"
+      ],
+      "gold": "原來貼了新聞沒事",
+      "id": "d512-13b47a51290ebf362bb3bf3f",
+      "status": "整句丟棄"
+    },
+    {
+      "after_reading": null,
+      "before_reading": [
+        "ㄇㄧˋ",
+        "ㄒㄧ",
+        "ㄒㄧ",
+        "ㄅㄧˇ",
+        "ㄏㄜˊ",
+        "ㄓㄤˇ"
+      ],
+      "gold": "密西西比河長",
+      "id": "d512-14d83a9a3d9616d7182a318f",
+      "status": "整句丟棄"
+    },
+    {
+      "after_reading": null,
+      "before_reading": [
+        "ㄊㄚ",
+        "ㄇㄣˊ",
+        "ㄕㄡ",
+        "ㄉㄧㄠˋ",
+        "ㄙㄨㄛˇ",
+        "ㄧㄡˇ",
+        "ㄋㄟˋ",
+        "ㄩㄥˋ",
+        "ㄑㄩ",
+        "ㄓㄨㄛ",
+        "ㄧˇ",
+        "ㄌㄧㄠˇ"
+      ],
+      "gold": "他們收掉所有內用區桌椅了",
+      "id": "d512-a581caf0e7e3998016f41e8f",
+      "status": "整句丟棄"
+    },
+    {
+      "after_reading": null,
+      "before_reading": [
+        "ㄩˇ",
+        "ㄓㄡˋ",
+        "ㄎㄢ",
+        "ㄑㄧˇ",
+        "ㄌㄞˊ",
+        "ㄒㄧㄤˋ",
+        "ㄕˋ",
+        "ㄧ",
+        "ㄍㄜˋ",
+        "ㄆㄧㄥˊ",
+        "ㄏㄨㄚˊ",
+        "ㄉㄜ˙",
+        "ㄕˊ",
+        "ㄎㄨㄥ",
+        "ㄌㄧㄢˊ",
+        "ㄒㄩˋ",
+        "ㄊㄧˇ"
+      ],
+      "gold": "宇宙看起來像是一個平滑的時空連續體",
+      "id": "d512-bae85408ff1126d753f34823",
+      "status": "整句丟棄"
+    }
+  ],
+  "limitations": [
+    "初審四筆與複審分詞錯例的處置已檢查；新版獨立抽查 20 筆的語境讀音仍待 reviewer 複審"
+  ],
+  "pre_post_baseline": "reports/pre-dp-state.json",
+  "pre_post_sha256": {
+    "data/generated/dev.jsonl": {
+      "after": "56d05aa4c7506c94497c519e10eea93d8b741a78675ccfbb879dd3708a707ae4",
+      "before": "d340ad036fea660630afc017ec3f185bc6612cd7098fa986cefebc52cf637f5d"
+    },
+    "data/generated/held-out.jsonl": {
+      "after": "c3eb19c58ecf8fb0ad67c64bb7cc361c562f3e4327d7d02b43c2416aa95911e1",
+      "before": "a3965023833457233345a544ab3dd4bafd393a7647ea3276e131eb7a013acf24"
+    },
+    "data/generated/split-manifest.json": {
+      "after": "9cc26a87b5cc3b123d55242a1f3a161160ababfb17cc2fb6fa2c56bceab3541a",
+      "before": "d8bd6a6df9b52d5f1d7f668ea3d98e7b4fba463c594095cc51e86cbbe61ae552"
+    },
+    "data/sample.jsonl": {
+      "after": "0d6f73215022df507de2fb19fd1fb36512cb0a8e4d413698c5bf1b13cd9e7279",
+      "before": "ef7d0386c87f7d35d56ec599fd47e723b67bf185e0e90e67f74a14ca72c83fa6"
+    },
+    "reports/lexicon-stats.json": {
+      "after": "5041ac0295de192ffa76bde153aef67e9fada6f50c15bf5a8758efbf78ce7903",
+      "before": "07c76df318174cfa3f9e417ab7898149b057402c58d638d81b101511b8232469"
+    },
+    "reports/stats.json": {
+      "after": "ba980945a9121e4a6a65a9563c3bb041f5c87b86228551dfe0de4ba243e2b3a1",
+      "before": "c73de0a8f74b2a8b8c13386c1077750fc7910ca9b8ae9c42e3257d9b4fe2e544"
+    }
+  },
+  "project_root": "DevLab/D512Eval/testset",
+  "push_performed": false,
+  "python": "3.13.7",
+  "raw_unchanged": true,
+  "reproducibility": {
+    "byte_identical": true,
+    "files": 6,
+    "repeated": true,
+    "sha256": {
+      "data/generated/dev.jsonl": "56d05aa4c7506c94497c519e10eea93d8b741a78675ccfbb879dd3708a707ae4",
+      "data/generated/held-out.jsonl": "c3eb19c58ecf8fb0ad67c64bb7cc361c562f3e4327d7d02b43c2416aa95911e1",
+      "data/generated/split-manifest.json": "9cc26a87b5cc3b123d55242a1f3a161160ababfb17cc2fb6fa2c56bceab3541a",
+      "data/sample.jsonl": "0d6f73215022df507de2fb19fd1fb36512cb0a8e4d413698c5bf1b13cd9e7279",
+      "reports/lexicon-stats.json": "5041ac0295de192ffa76bde153aef67e9fada6f50c15bf5a8758efbf78ce7903",
+      "reports/stats.json": "ba980945a9121e4a6a65a9563c3bb041f5c87b86228551dfe0de4ba243e2b3a1"
+    }
+  },
+  "sample_validation": {
+    "data/sample.jsonl": 200
+  },
+  "schema_validation": {
+    "data/generated/dev.jsonl": 1794,
+    "data/generated/held-out.jsonl": 7190
+  },
+  "split_manifest_cases": 8984,
+  "status": "通過",
+  "tracked_files_modified": [],
+  "unit_tests": {
+    "count": 16,
+    "output": "test_documents_and_globally_unique_gold_stay_together (test_pipeline.PipelineTest.test_documents_and_globally_unique_gold_stay_together) ... ok\ntest_dp_equal_scores_prefer_the_earlier_long_word (test_pipeline.PipelineTest.test_dp_equal_scores_prefer_the_earlier_long_word) ... ok\ntest_dp_keeps_a_strong_long_word_instead_of_splitting_every_character (test_pipeline.PipelineTest.test_dp_keeps_a_strong_long_word_instead_of_splitting_every_character) ... ok\ntest_dp_splits_arabic_language_middle_and_particle (test_pipeline.PipelineTest.test_dp_splits_arabic_language_middle_and_particle) ... ok\ntest_dp_uses_global_score_instead_of_the_longest_prefix (test_pipeline.PipelineTest.test_dp_uses_global_score_instead_of_the_longest_prefix) ... ok\ntest_five_particle_exceptions_apply_only_to_single_character_fallback (test_pipeline.PipelineTest.test_five_particle_exceptions_apply_only_to_single_character_fallback) ... ok\ntest_highest_frequency_tied_word_readings_reject_whole_segment (test_pipeline.PipelineTest.test_highest_frequency_tied_word_readings_reject_whole_segment) ... ok\ntest_html_excludes_footnote_table_quote_and_tracks_paragraphs (test_pipeline.PipelineTest.test_html_excludes_footnote_table_quote_and_tracks_paragraphs) ... ok\ntest_longest_word_and_unambiguous_single_character_fallback (test_pipeline.PipelineTest.test_longest_word_and_unambiguous_single_character_fallback) ... ok\ntest_polyphonic_fallback_rejects_whole_punctuation_segment (test_pipeline.PipelineTest.test_polyphonic_fallback_rejects_whole_punctuation_segment) ... ok\ntest_punctuation_numbers_and_window_remainder (test_pipeline.PipelineTest.test_punctuation_numbers_and_window_remainder) ... ok\ntest_schema_rejects_left_neutral_tone_extra_field_and_length_mismatch (test_pipeline.PipelineTest.test_schema_rejects_left_neutral_tone_extra_field_and_length_mismatch) ... ok\ntest_shuffled_chat_cannot_invent_context (test_pipeline.PipelineTest.test_shuffled_chat_cannot_invent_context) ... ok\ntest_split_retains_both_source_domains (test_pipeline.PipelineTest.test_split_retains_both_source_domains) ... ok\ntest_unknown_drops_entire_segment_and_context_is_previous_source_text (test_pipeline.PipelineTest.test_unknown_drops_entire_segment_and_context_is_previous_source_text) ... ok\ntest_validator_rejects_cross_split_gold_with_different_context (test_pipeline.PipelineTest.test_validator_rejects_cross_split_gold_with_different_context) ... ok\n\n----------------------------------------------------------------------\nRan 16 tests in 0.008s\n\nOK\n",
+    "returncode": 0
+  },
+  "untracked_scope": "DevLab/D512Eval/testset/"
+}

@@ -1,0 +1,9 @@
+[project]
+name = "d512-eval-testset"
+version = "0.1.0"
+description = "D512 公開語料注音評測集產生器"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false
