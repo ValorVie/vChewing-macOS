@@ -14,6 +14,50 @@ private let baselineOverrideScore: Double = 114_514
 
 extension HomaTestsRoot {
   struct HomaTests_NodeOverrideStatus: HomaTestSuite {
+    @Test("Exact candidate anchors disambiguate repeated readings without changing cursor lookup")
+    func testExactCandidateAnchor() throws {
+      func makeAssembler() throws -> Homa.Assembler {
+        let assembler = Homa.Assembler(gramQuerier: { query in
+          let keys = query.map(\.first)
+          if keys.count == 1 { return [.init(keyArray: keys, current: "試", probability: -4)] }
+          guard keys.count == 3 else { return [] }
+          return [.init(keyArray: keys, current: "試試試", probability: -1),
+                  .init(keyArray: keys, current: "世事時", probability: -3)]
+        })
+        try assembler.insertKeys(Array(repeating: .singleKey("ㄕˋ"), count: 4))
+        return assembler
+      }
+      let pair = Homa.CandidatePair(keyArray: Array(repeating: "ㄕˋ", count: 3), value: "世事時")
+      let exact = try makeAssembler()
+      var exactObservations = 0
+      try exact.overrideCandidate(
+        pair, atSegment: 0, segLength: 3, isExplicitlyOverridden: true,
+        perceptionHandler: { _ in exactObservations += 1 }
+      )
+      #expect(exact.segments[0][3]?.value == "世事時")
+      #expect(exact.segments[0][3]?.isExplicitlyOverridden == true)
+      #expect(exact.segments[1][3]?.currentOverrideType == nil)
+      #expect(exact.assembledSentence.map(\.value) == ["世事時", "試"])
+      #expect(exactObservations == 1)
+      let original = exact.createNodeOverrideStatusMirror()
+      #expect(throws: Homa.Exception.nothingOverriddenAtNode) {
+        try exact.overrideCandidate(pair, atSegment: 4, segLength: 3)
+      }
+      #expect(exact.createNodeOverrideStatusMirror() == original)
+
+      let legacy = try makeAssembler()
+      var legacyObservations = 0
+      try legacy.overrideCandidate(
+        pair, at: 2, isExplicitlyOverridden: true,
+        perceptionHandler: { _ in legacyObservations += 1 }
+      )
+      #expect(legacy.segments[0][3]?.currentOverrideType == nil)
+      #expect(legacy.segments[1][3]?.value == "世事時")
+      #expect(legacy.segments[1][3]?.isExplicitlyOverridden == true)
+      #expect(legacy.assembledSentence.map(\.value) == ["試", "世事時"])
+      #expect(legacyObservations == 1)
+    }
+
     @Test("FIUUID Basics")
     func testFIUUIDBasics() throws {
       let uuid1 = FIUUID()

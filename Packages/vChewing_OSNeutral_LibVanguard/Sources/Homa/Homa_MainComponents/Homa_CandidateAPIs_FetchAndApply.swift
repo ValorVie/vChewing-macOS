@@ -105,6 +105,24 @@ extension Homa.Assembler {
     )
   }
 
+  /// 以節點起點與軌格幅節長度指定候選，避免重複讀音的重疊節點搜尋歧義。
+  public func overrideCandidate(
+    _ candidate: Homa.CandidatePair,
+    atSegment location: Int,
+    segLength: Int,
+    type overrideType: Homa.Node.OverrideType = .withSpecified,
+    isExplicitlyOverridden: Bool = false,
+    enforceRetokenization: Bool = false,
+    perceptionHandler: ((Homa.PerceptionIntel) -> ())? = nil
+  ) throws {
+    try overrideCandidateAgainst(
+      keyArray: candidate.keyArray, at: location, value: candidate.value, type: overrideType,
+      isExplicitlyOverridden: isExplicitlyOverridden,
+      enforceRetokenization: enforceRetokenization, perceptionHandler: perceptionHandler,
+      anchor: (location, segLength)
+    )
+  }
+
   public func overrideCandidate(
     _ candidate: Homa.CandidatePairWeighted,
     at location: Int,
@@ -172,13 +190,23 @@ extension Homa.Assembler {
     type: Homa.Node.OverrideType,
     isExplicitlyOverridden: Bool,
     enforceRetokenization: Bool,
-    perceptionHandler: ((Homa.PerceptionIntel) -> ())? = nil
+    perceptionHandler: ((Homa.PerceptionIntel) -> ())? = nil,
+    anchor: (location: Int, segLength: Int)? = nil
   ) throws {
     let location = max(min(location, keys.count), 0) // 防呆
     let effectiveLocation = min(keys.count - 1, location)
 
     // 獲取重疊節點
-    let arrOverlappedNodes = fetchOverlappingNodes(at: effectiveLocation)
+    let arrOverlappedNodes: [(location: Int, segLength: Int, node: Homa.Node)]
+    if let anchor {
+      if segments.indices.contains(anchor.location), let node = segments[anchor.location][anchor.segLength] {
+        arrOverlappedNodes = [(anchor.location, anchor.segLength, node)]
+      } else {
+        arrOverlappedNodes = []
+      }
+    } else {
+      arrOverlappedNodes = fetchOverlappingNodes(at: effectiveLocation)
+    }
 
     if arrOverlappedNodes.isEmpty {
       throw Homa.Exception.nothingOverriddenAtNode
