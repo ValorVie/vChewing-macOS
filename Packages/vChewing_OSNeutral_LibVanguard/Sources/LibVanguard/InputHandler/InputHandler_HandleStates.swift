@@ -531,6 +531,9 @@ extension InputHandlerProtocol {
     guarded: Bool = false
   )
     -> State {
+    #if compiler(>=6.4)
+      d512SentenceRerank.keyCommitSnapshot = nil
+    #endif
     furiousHighlightOverride = nil // 高亮覆寫僅供當拍消費（高亮預覽不走本函數）。
     if isConsideredEmptyForNow, !guarded { return State.ofAbortion() }
     restoreBackupCursor() // 只要叫了 Inputting 狀態，就盡可能還原游標備份。
@@ -738,6 +741,11 @@ extension InputHandlerProtocol {
 
   /// 組字區可以投影成 BPMFVS 顯示，但一般遞交流程只能吃原始內容。
   public func committableDisplayText(sansReading: Bool = false) -> String {
+    #if compiler(>=6.4)
+      if let snapshot = d512SentenceRerank.keyCommitSnapshot, snapshot.keys == assembler.keys {
+        return snapshot.text
+      }
+    #endif
     let handleAsCodePointInput = currentTypingMethod == .codePoint && !sansReading
     let handleAsRomanNumeralInput = currentTypingMethod == .romanNumerals && !sansReading
     var displayTextSegments: [String] = handleAsCodePointInput || handleAsRomanNumeralInput

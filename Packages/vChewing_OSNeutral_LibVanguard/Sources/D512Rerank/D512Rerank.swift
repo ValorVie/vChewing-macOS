@@ -15,16 +15,17 @@ public struct D512Request: Decodable, Sendable {
   public struct Candidate: Decodable, Sendable {
     public struct Segment: Decodable, Sendable {
       public let Correction: Bool?
+      public init(correction: Bool) { Correction = correction }
     }
 
     public let text: String
     public let log_score: Double
     public let segments: [Segment]?
 
-    public init(text: String, log_score: Double) {
+    public init(text: String, log_score: Double, correction: Bool = false) {
       self.text = text
       self.log_score = log_score
-      self.segments = nil
+      self.segments = correction ? [.init(correction: true)] : nil
     }
   }
 

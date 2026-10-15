@@ -11,6 +11,16 @@ extension InputHandlerProtocol {
   public func triageInput(event input: InputSignalProtocol) -> Bool {
     defer { candidateSelectionLearning.prune(assembler: assembler) }
     guard let session = session else { return false }
+    #if compiler(>=6.4)
+      let rerank = d512SentenceRerank
+      rerank.invalidate()
+      if rerank.hasPin {
+        rerank.keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
+        rerank.withdraw(assembler: assembler)
+        applyPersonalCandidatePreference()
+      }
+      defer { rerank.keyCommitSnapshot = nil }
+    #endif
     var state: State { session.state }
     currentLM.syncPrefs()
     synchronizePersonalCandidatePreference()

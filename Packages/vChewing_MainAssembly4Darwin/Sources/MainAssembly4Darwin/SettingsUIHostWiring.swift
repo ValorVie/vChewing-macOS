@@ -14,6 +14,9 @@ extension SettingsUIHost {
     func refreshPersonalPreferences() {
       for session in [InputSession.sessionEven, InputSession.sessionOdd] {
         session.refreshPersonalCandidatePreference(refreshComposition: session === InputSession.current)
+        #if compiler(>=6.4)
+          session.refreshD512SentenceRerank(refreshComposition: session === InputSession.current)
+        #endif
       }
     }
     // LXMgr 動作依賴。

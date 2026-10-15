@@ -7,6 +7,7 @@
   import D512Rerank
   import Foundation
   import Homa
+  import LexiconAssembly
   #if canImport(D512RerankONNX)
     import D512RerankONNX
   #endif
@@ -47,6 +48,9 @@
     private(set) var context = ""
     var hasPin: Bool { !pins.isEmpty }
     var debounceSeconds: Double = 0.15
+    var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String)?
+    private(set) var lastEvaluation: Evaluation?
+    var evaluationCompleted: (() -> Void)?
 
     func invalidate() { generation &+= 1 }
 
@@ -72,6 +76,7 @@
     func clear(assembler: Homa.Assembler) {
       invalidate()
       withdraw(assembler: assembler)
+      keyCommitSnapshot = nil
     }
 
     func owns(_ node: Homa.Node?) -> Bool {
@@ -147,6 +152,114 @@
       }
     }
 
+    /// 此處僅複製值語義圖；Homa 的查詢器與感知器不會送往背景。
+    func evaluate<Handler: InputHandlerProtocol>(_ handler: Handler) {
+      let assembler = handler.assembler
+      let defaultGrams = assembler.assembledSentence
+      guard defaultGrams.reduce(0, { $0 + $1.segLength }) == assembler.length else { return }
+      let fixed = handler.candidateSelectionLearning.protectedRanges(assembler: assembler)
+      var personal: [FixedText] = []
+      var start = 0
+      for gram in defaultGrams {
+        if handler.personalCandidatePreference.owns(assembler.segments[start][gram.segLength]) {
+          personal.append(.init(range: start ..< start + gram.segLength, text: gram.value))
+        }
+        start += gram.segLength
+      }
+      let grid = handler.personalCandidatePreference.withWithdrawn(assembler: assembler) {
+        Grid(config: assembler.config)
+      }
+      var latest: [[String]: String] = [:]
+      if handler.isCandidateRankingEnabled {
+        for segment in grid.assembler.segments {
+          for node in segment.values {
+            for gram in node.grams {
+              latest[gram.keyArray] = handler.currentLM.candidateRanking.latestValue(for: gram.keyArray)
+            }
+          }
+        }
+      }
+      let token = generation
+      let context = context
+      let w = handler.prefs.d512RerankWeight, tau = handler.prefs.d512RerankMargin
+      let b = handler.prefs.d512RerankPersonalBonus
+      let keys = assembler.keys
+      let completion: @MainActor @Sendable (Evaluation?) -> Void = { [weak self, weak handler] evaluation in
+          guard let self, let handler, self.generation == token,
+                handler.prefs.useD512SentenceRerank, handler.session?.state.type == .ofInputting,
+                handler.assembler.keys == keys,
+                handler.composer.isEmpty, handler.mixedAlphanumericalBuffer.isEmpty else { return }
+          if let evaluation {
+            self.lastEvaluation = evaluation
+            if evaluation.choice != evaluation.defaultIndex {
+              handler.personalCandidatePreference.withdraw(assembler: handler.assembler)
+              let applied = self.apply(
+                evaluation.paths[evaluation.choice].grams, assembler: handler.assembler, fixedRanges: fixed
+              )
+              if applied {
+                handler.session?.switchState(handler.generateStateOfInputting())
+              } else { handler.applyPersonalCandidatePreference() }
+            }
+          }
+          self.evaluationCompleted?()
+      }
+      worker.queue.async { [worker, latest] in
+        let evaluation = worker.evaluate(
+          grid: grid, defaultGrams: defaultGrams, fixed: fixed, latest: latest, context: context,
+          weight: w, margin: tau, bonus: b
+        )
+        DispatchQueue.main.async { completion(evaluation) }
+      }
+    }
+
+    nonisolated struct Path: Sendable {
+      let grams: [Homa.GramInPath]
+      let text: String
+      let raw: Double
+      let personalHits: Int
+
+      init(grams: [Homa.GramInPath], latest: [[String]: String], wordRanges: [Range<Int>]) {
+        self.grams = grams
+        text = grams.map(\.value).joined()
+        raw = grams.reduce(0) { $0 + $1.score }
+        var start = 0, hits = 0
+        for item in grams {
+          let gram = item.gram, length = item.segLength
+          let range = start ..< start + length
+          defer { start = range.upperBound }
+          guard gram.current.count == length,
+                gram.keyArray.allSatisfy({ !$0.isEmpty && !$0.hasPrefix("_") }),
+                (gram.previous ?? "").isEmpty, (gram.anterior ?? "").isEmpty,
+                latest[gram.keyArray] == gram.current,
+                length > 1 || !wordRanges.contains(where: { $0.overlaps(range) }) else { continue }
+          hits += 1
+        }
+        personalHits = hits
+      }
+    }
+
+    nonisolated struct FixedText: Sendable {
+      let range: Range<Int>
+      let text: String
+    }
+
+    nonisolated struct Evaluation: Sendable {
+      let request: D512Request
+      let paths: [Path]
+      let model: [Double]?
+      let fused: [Double]?
+      let defaultIndex: Int
+      let winner: Int
+      let choice: Int
+      let weight, margin, bonus: Double
+    }
+
+    /// 複製的 Config 只含值語義節點及不可變 gram；此圖由單一 worker 獨占。
+    nonisolated private final class Grid: @unchecked Sendable {
+      let assembler: Homa.Assembler
+      init(config: Homa.Config) { assembler = .init(gramQuerier: { _ in [] }, config: config) }
+    }
+
     nonisolated struct ModelResult: Sendable {
       let scores: [Double]?
       let error: String?
@@ -191,6 +304,66 @@
           guard let scorer, let vocab else { return .init(scores: nil, error: "scorer unavailable") }
           return .init(scores: try vocab.modelScores(request, scorer: scorer), error: nil)
         } catch { return .init(scores: nil, error: String(describing: error)) }
+      }
+
+      func evaluate(
+        grid: Grid, defaultGrams: [Homa.GramInPath], fixed: [Range<Int>], latest: [[String]: String],
+        context: String, weight: Double, margin: Double, bonus: Double
+      ) -> Evaluation? {
+        do {
+          var wordRanges: [Range<Int>] = []
+          var start = 0
+          for gram in grid.assembler.assembledSentence {
+            if gram.segLength > 1 { wordRanges.append(start ..< start + gram.segLength) }
+            start += gram.segLength
+          }
+          var paths = try grid.assembler.assembleKBest(k: 8, fixedRanges: fixed).map {
+            Path(grams: $0.grams, latest: latest, wordRanges: wordRanges)
+          }
+          let baseline = Path(grams: defaultGrams, latest: latest, wordRanges: wordRanges)
+          let d: Int
+          if let index = paths.firstIndex(where: { $0.text == baseline.text }) {
+            d = index
+            paths[index] = baseline
+          } else {
+            d = paths.count
+            paths.append(baseline)
+          }
+          let request = D512Request(
+            id: UUID().uuidString, context: context, reading: defaultGrams.flatMap(\.keyArray),
+            candidates: paths.map {
+              .init(text: $0.text, log_score: $0.raw, correction: $0.grams.contains(where: \.isReadingMismatched))
+            }, engineDefault: d
+          )
+          let result = score(request)
+          let raw = paths.map(\.raw), hits = paths.map(\.personalHits)
+          let fused = D512Fusion.scores(engine: raw, model: result.scores, weight: weight,
+                                        personalHits: hits, bonus: bonus)
+          let winner = fused.flatMap { scores in scores.indices.max { scores[$0] < scores[$1] } } ?? d
+          let choice = D512Fusion.choose(engine: raw, model: result.scores, default: d, weight: weight,
+                                         margin: margin, personalHits: hits, bonus: bonus)
+          return .init(request: request, paths: paths, model: result.scores, fused: fused,
+                       defaultIndex: d, winner: winner, choice: choice, weight: weight, margin: margin, bonus: bonus)
+        } catch { return nil }
+      }
+    }
+  }
+
+  extension InputHandlerProtocol {
+    func scheduleD512Rerank() {
+      let rerank = d512SentenceRerank
+      guard prefs.useD512SentenceRerank, session?.state.type == .ofInputting,
+            currentTypingMethod == .vChewingFactory, !prefs.useSCPCTypingMode,
+            !prefs.cassetteEnabled, composer.isEmpty, mixedAlphanumericalBuffer.isEmpty,
+            (2 ... 32).contains(assembler.length),
+            assembler.assembledSentence.reduce(0, { $0 + $1.segLength }) == assembler.length,
+            assembler.assembledSentence.allSatisfy({
+              !$0.isReadingMismatched && $0.keyArray.allSatisfy { !$0.isEmpty && !$0.hasPrefix("_") }
+            }) else { rerank.invalidate(); return }
+      guard !rerank.hasPin else { return }
+      rerank.schedule { [weak self] in
+        guard let self else { return }
+        rerank.evaluate(self)
       }
     }
   }

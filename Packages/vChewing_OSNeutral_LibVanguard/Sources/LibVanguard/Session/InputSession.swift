@@ -61,7 +61,14 @@ public final class InputSession: SessionProtocol, Sendable {
 
   public static var current: InputSession? {
     get { _current }
-    set { _current = newValue }
+    set {
+      #if compiler(>=6.4)
+        if _current?.id != newValue?.id, let handler = _current?.inputHandler {
+          handler.d512SentenceRerank.leaveClient(assembler: handler.assembler)
+        }
+      #endif
+      _current = newValue
+    }
   }
 
   /// 用以記錄最近存取過的十個客體（亂序），相關內容會在客體管理器當中用得到。

@@ -123,6 +123,9 @@ extension SessionCoreProtocol {
       colorState: state.data.tooltipColorState,
       duration: state.tooltipDuration
     )
+    #if compiler(>=6.4)
+      inputHandler?.scheduleD512Rerank()
+    #endif
   }
 
   // MARK: resetInputHandler

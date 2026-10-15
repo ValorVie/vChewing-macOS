@@ -187,6 +187,9 @@ extension SessionProtocol {
   }
 
   public func performServerDeactivation() {
+    #if compiler(>=6.4)
+      if let inputHandler { inputHandler.d512SentenceRerank.leaveClient(assembler: inputHandler.assembler) }
+    #endif
     guard Self.current?.id != id else { return }
     isActivated = false
     // `resetInputHandler()` 會自動搞定 Empty 狀態。
@@ -201,8 +204,13 @@ extension SessionProtocol {
   }
 
   public func updateClientProxyObjectIdentifier(_ clientProxy: (any SessionClientProxy)?) {
-    guard let clientProxy else { return }
-    clientProxyObjectIdentifier = .init(clientProxy)
+    let identifier = clientProxy.map { ObjectIdentifier($0) }
+    #if compiler(>=6.4)
+      if identifier != clientProxyObjectIdentifier, let inputHandler {
+        inputHandler.d512SentenceRerank.leaveClient(assembler: inputHandler.assembler)
+      }
+    #endif
+    clientProxyObjectIdentifier = identifier
   }
 
   public func performServerActivation() {

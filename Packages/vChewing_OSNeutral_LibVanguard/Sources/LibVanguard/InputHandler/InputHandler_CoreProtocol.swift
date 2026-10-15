@@ -244,6 +244,9 @@ extension InputHandlerProtocol {
   public var keySeparator: String { assembler.separator }
 
   public func clear() {
+    #if compiler(>=6.4)
+      d512SentenceRerank.clear(assembler: assembler)
+    #endif
     candidateSelectionLearning.clear()
     personalCandidatePreference.clear()
     clearComposerAndCalligrapher()

@@ -37,6 +37,28 @@ public final class PersonalCandidatePreference {
     assembler.assemble()
   }
 
+  #if compiler(>=6.4)
+    /// 快照重排圖時暫撤個人 pin；持有權與畫面原狀均保留。
+    func withWithdrawn<Result>(assembler: Homa.Assembler, _ body: () -> Result) -> Result {
+      var originals: [FIUUID: Homa.NodeOverrideStatus] = [:]
+      var applied: [FIUUID: Homa.NodeOverrideStatus] = [:]
+      for segment in assembler.segments {
+        for node in segment.values {
+          guard let pin = pins[node.id], node.overrideStatus == pin.applied else { continue }
+          originals[node.id] = pin.original
+          applied[node.id] = pin.applied
+        }
+      }
+      assembler.restoreFromNodeOverrideStatusMirror(originals)
+      assembler.assemble()
+      defer {
+        assembler.restoreFromNodeOverrideStatusMirror(applied)
+        assembler.assemble()
+      }
+      return body()
+    }
+  #endif
+
   func apply(assembler: Homa.Assembler, store: LXAssembly.CandidateRankingStore,
              protectedRanges: [Range<Int>]) {
     withdraw(assembler: assembler)
@@ -114,6 +136,9 @@ extension InputHandlerProtocol {
 
   func applyPersonalCandidatePreference() {
     synchronizePersonalCandidatePreference()
+    #if compiler(>=6.4)
+      if d512SentenceRerank.hasPin { return }
+    #endif
     guard isCandidateRankingEnabled else {
       personalCandidatePreference.withdraw(assembler: assembler)
       return

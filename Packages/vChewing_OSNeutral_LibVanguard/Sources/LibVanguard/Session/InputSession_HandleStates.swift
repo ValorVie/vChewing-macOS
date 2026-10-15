@@ -7,6 +7,19 @@ import Foundation
 // MARK: - 狀態調度 (State Handling)
 
 extension SessionProtocol {
+  #if compiler(>=6.4)
+    public func refreshD512SentenceRerank(refreshComposition: Bool = true) {
+      guard let inputHandler else { return }
+      inputHandler.d512SentenceRerank.invalidate()
+      let hadPin = inputHandler.d512SentenceRerank.hasPin
+      inputHandler.d512SentenceRerank.withdraw(assembler: inputHandler.assembler)
+      if hadPin, refreshComposition, state.type == .ofInputting {
+        switchState(inputHandler.generateStateOfInputting())
+      } else if refreshComposition {
+        inputHandler.scheduleD512Rerank()
+      }
+    }
+  #endif
   /// 設定切換只刷新活躍組字；已開候選窗保留 snapshot，關窗產生 Inputting 時才套用新值。
   public func refreshPersonalCandidatePreference(refreshComposition: Bool = true) {
     guard let inputHandler else { return }
@@ -119,6 +132,9 @@ extension SessionProtocol {
     func doCommit(_ theBuffer: String) {
       if let ctl = clientProxy {
         ctl.clientTextInsertion(with: theBuffer, replacementRange: replacementRange())
+        #if compiler(>=6.4)
+          if ctl.hasClient() { inputHandler?.d512SentenceRerank.noteCommit(theBuffer) }
+        #endif
         rankingReceipt?.confirm(insertedUnchanged: ctl.hasClient() && !theBuffer.isEmpty && theBuffer == originalText)
       } else {
         rankingReceipt?.confirm(insertedUnchanged: false)
