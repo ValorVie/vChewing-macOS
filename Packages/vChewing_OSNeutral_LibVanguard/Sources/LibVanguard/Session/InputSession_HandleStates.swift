@@ -143,13 +143,14 @@ extension SessionProtocol {
             rerank?.noteCommit(theBuffer, calibrationEnabled: prefs.logD512Calibration)
           }
           rerank?.confirmCommitRecords(calibrationRecords, text: ctl.hasClient() ? theBuffer : nil,
-                                       enabled: prefs.logD512Calibration)
+                                       enabled: prefs.logD512Calibration, expectedClientEpoch: clientEpoch ?? 0)
         #endif
         rankingReceipt?.confirm(insertedUnchanged: ctl.hasClient() && !theBuffer.isEmpty && theBuffer == originalText)
       } else {
         rankingReceipt?.confirm(insertedUnchanged: false)
         #if compiler(>=6.4)
-          rerank?.confirmCommitRecords(calibrationRecords, text: nil, enabled: prefs.logD512Calibration)
+          rerank?.confirmCommitRecords(calibrationRecords, text: nil, enabled: prefs.logD512Calibration,
+                                       expectedClientEpoch: clientEpoch ?? 0)
         #endif
       }
     }

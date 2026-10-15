@@ -98,5 +98,23 @@ extension LibVanguardTestsRoot {
       }
       #expect(D512SentenceRerank.unavailableReason(at: directory) != nil)
     }
+
+    @Test func delayedCalibrationReceiptCannotCommitAcrossClients() throws {
+      let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".jsonl")
+      let rerank = D512SentenceRerank()
+      rerank.calibrationLog = D512CalibrationLog(url: url)
+      let record = D512CalibrationRecord(
+        id: "receipt", reading: ["ㄕˋ", "ㄕˋ"], candidates: [], defaultIndex: 0, winnerIndex: 0,
+        applied: false, personalConflict: false, pomConflict: false, weight: 0.5, margin: 0.5, bonus: 2
+      )
+      let epoch = rerank.clientEpoch
+      rerank.leaveClient(assembler: .init(gramQuerier: { _ in [] }))
+      rerank.confirmCommitRecords([record], text: "世事", enabled: true, expectedClientEpoch: epoch)
+      rerank.calibrationLog.flush()
+      let data = try Data(contentsOf: url).dropLast()
+      let result = try JSONDecoder().decode(D512CalibrationRecord.self, from: Data(data))
+      #expect(result.phase == "cancel")
+      #expect(result.finalCommittedText == nil)
+    }
   }
 }

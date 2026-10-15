@@ -14,12 +14,23 @@ extension InputHandlerProtocol {
     #if compiler(>=6.4)
       let rerank = d512SentenceRerank
       rerank.invalidate()
-      if rerank.hasPin {
+      let withdrewD512Pin = rerank.hasPin
+      if withdrewD512Pin {
         rerank.keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
         rerank.withdraw(assembler: assembler)
         applyPersonalCandidatePreference()
       }
-      defer { rerank.keyCommitSnapshot = nil }
+      defer {
+        rerank.keyCommitSnapshot = nil
+        if session.state.type == .ofInputting {
+          if withdrewD512Pin {
+            session.switchState(generateStateOfInputting())
+          } else {
+            // F1 等攔截但不切換狀態的按鍵也會撤銷舊世代，須重排新的停頓。
+            scheduleD512Rerank()
+          }
+        }
+      }
     #endif
     var state: State { session.state }
     currentLM.syncPrefs()

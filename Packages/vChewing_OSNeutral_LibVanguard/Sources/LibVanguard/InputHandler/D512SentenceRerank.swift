@@ -35,7 +35,7 @@
           FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
         }) else { return "i18n:D512.ModelMissing".i18n }
         do {
-          try D512ONNXScorer.verifyFiles(directory)
+          try D512ONNXScorer.verifyFiles(directory, useCache: false)
           _ = try D512Vocab(modelDirectory: directory)
           return nil
         } catch { return "i18n:D512.ModelInvalid".i18n }
@@ -334,11 +334,14 @@
       return calibrationEnabled ? pendingRecords : []
     }
 
-    func confirmCommitRecords(_ records: [D512CalibrationRecord], text: String?, enabled: Bool) {
+    func confirmCommitRecords(
+      _ records: [D512CalibrationRecord], text: String?, enabled: Bool, expectedClientEpoch: UInt64
+    ) {
       guard enabled else { return }
       for var record in records {
-        record.phase = text == nil ? "cancel" : "commit"
-        record.finalCommittedText = text
+        let committed = expectedClientEpoch == clientEpoch ? text : nil
+        record.phase = committed == nil ? "cancel" : "commit"
+        record.finalCommittedText = committed
         calibrationLog.append(record)
       }
     }

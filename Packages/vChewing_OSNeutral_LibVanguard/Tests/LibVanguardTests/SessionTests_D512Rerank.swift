@@ -247,6 +247,22 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(testHandler.assembler.segments[0][2]?.overrideStatus == original)
   }
 
+  @Test("SS-D512-012 A swallowed function key refreshes the withdrawn pin and restarts debounce")
+  func test_SS_D512_012_FunctionKey() async {
+    prepareD512Fixture()
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    press(.functionKeyEvent(.kF1))
+    let visible = testSession.state.displayedText
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == visible)
+    prepareD512Fixture()
+    typeSentenceOrCandidates("g4g4")
+    press(.functionKeyEvent(.kF1))
+    await waitForD512()
+    #expect(testSession.state.displayedText == "世事")
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",
@@ -335,9 +351,21 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
   }
 
   func waitForD512() async {
+    final class Completion { var finished = false }
     await withCheckedContinuation { continuation in
-      testHandler.d512SentenceRerank.evaluationCompleted = {
-        self.testHandler.d512SentenceRerank.evaluationCompleted = nil
+      let completion = Completion()
+      let rerank = testHandler.d512SentenceRerank
+      rerank.evaluationCompleted = {
+        guard !completion.finished else { return }
+        completion.finished = true
+        rerank.evaluationCompleted = nil
+        continuation.resume()
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+        guard !completion.finished else { return }
+        Issue.record("D512 evaluation timed out")
+        completion.finished = true
+        rerank.evaluationCompleted = nil
         continuation.resume()
       }
     }
