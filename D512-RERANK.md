@@ -121,10 +121,10 @@ PY
 
 最終送出文字不能直接當成正確答案，因為使用者可能直接接受模型結果。請人工標註樣本的正確句，再比較有益與有害覆蓋；保留一部分樣本作為未參與校準的驗收資料。
 
-確定新值後，先切換到其他輸入法並結束唯音行程，依建置與安裝指南備份偏好 plist。SwiftPM sandbox app 的偏好位置如下；其他打包方式請核對實際備份位置：
+確定新值後，先切換到其他輸入法並結束唯音行程，依建置與安裝指南備份偏好 plist。app 雖啟用 sandbox，但 entitlement 對 `~/Library/Preferences/org.atelierInmu.inputmethod.vChewing.plist` 有 home-relative 讀寫例外，偏好實際存在該處而不是容器內（2026-10-15 實機核對）。請以 domain 名稱讀寫：
 
 ```sh
-vch_prefs="$HOME/Library/Containers/org.atelierInmu.inputmethod.vChewing/Data/Library/Preferences/org.atelierInmu.inputmethod.vChewing"
+vch_prefs=org.atelierInmu.inputmethod.vChewing
 defaults write "$vch_prefs" D512RerankWeight -float 0.5
 defaults write "$vch_prefs" D512RerankMargin -float 0.5
 defaults write "$vch_prefs" D512RerankPersonalBonus -float 2.0
