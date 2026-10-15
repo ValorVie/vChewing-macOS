@@ -49,7 +49,7 @@
     private(set) var clientEpoch: UInt64 = 0
     var hasPin: Bool { !pins.isEmpty }
     var debounceSeconds: Double = 0.15
-    var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String)?
+    var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String, frontCandidate: Homa.CandidatePair?)?
     private(set) var pendingCommitClientEpoch: UInt64?
     private(set) var lastEvaluation: Evaluation?
     var evaluationCompleted: (() -> Void)?
@@ -84,7 +84,10 @@
       if !assembler.isEmpty {
         pendingCommitClientEpoch = pendingCommitClientEpoch ?? clientEpoch
         if hasPin {
-          keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
+          keyCommitSnapshot = (
+            assembler.keys, assembler.assembledSentence.map(\.value).joined(),
+            assembler.assembledSentence.last?.asCandidatePair
+          )
         }
       }
       clientEpoch &+= 1

@@ -16,7 +16,10 @@ extension InputHandlerProtocol {
       rerank.invalidate()
       let withdrewD512Pin = rerank.hasPin || rerank.keyCommitSnapshot != nil
       if rerank.hasPin {
-        rerank.keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
+        rerank.keyCommitSnapshot = (
+          assembler.keys, assembler.assembledSentence.map(\.value).joined(),
+          assembler.assembledSentence.last?.asCandidatePair
+        )
         rerank.withdraw(assembler: assembler)
         applyPersonalCandidatePreference()
       }
@@ -159,13 +162,17 @@ extension InputHandlerProtocol {
       case .kBackSpace: return handleBackSpace(input: input)
       case .kWindowsDelete: return handleDelete(input: input)
       case .kCarriageReturn, .kLineFeed:
-        let frontNode = assembler.assembledSentence.last
+        var frontPair = assembler.assembledSentence.last?.asCandidatePair
+        #if compiler(>=6.4)
+          if let snapshot = d512SentenceRerank.keyCommitSnapshot, snapshot.keys == assembler.keys {
+            frontPair = snapshot.frontCandidate
+          }
+        #endif
         let shouldEarlyBreak: Bool = currentTypingMethod != .vChewingFactory
         return handleEnter(input: input) { [currentLM = currentLM] in
           guard !shouldEarlyBreak else { return [] }
-          guard let frontNode = frontNode else { return [] }
-          let pair = KeyValuePaired(keyArray: frontNode.keyArray, value: frontNode.value)
-          return currentLM.lxQuerier.associatedCandidates(forPair: pair)
+          guard let frontPair else { return [] }
+          return currentLM.lxQuerier.associatedCandidates(forPair: frontPair)
         }
       case .kSymbolMenuPhysicalKeyIntl, .kSymbolMenuPhysicalKeyJIS:
         let isJIS = keyCodeType == .kSymbolMenuPhysicalKeyJIS

@@ -308,6 +308,22 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(testHandler.d512SentenceRerank.context.isEmpty)
   }
 
+  @Test("SS-D512-R1-003 Shift Enter derives associates from the displayed final segment")
+  func test_SS_D512_R1_003_Associates() async {
+    prepareD512Fixture()
+    testHandler.prefs.associatedPhrasesEnabled = true
+    testHandler.currentLM.injectTestData(associates: {
+      $0.replaceData(textData: "試試 看\n世事 難料\n")
+    })
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    let visible = testSession.state.displayedText
+    press(.shiftEnterEvent)
+    #expect(testClientProxy.committedText == visible)
+    #expect(testSession.state.candidates.contains { $0.value == "難料" })
+    #expect(!testSession.state.candidates.contains { $0.value == "看" })
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",
