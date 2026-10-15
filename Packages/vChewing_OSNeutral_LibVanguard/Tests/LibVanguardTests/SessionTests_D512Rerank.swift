@@ -263,6 +263,43 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(testSession.state.displayedText == "世事")
   }
 
+  @Test("SS-D512-R1-001 Client exits preserve displayed commits without refilling cleared context",
+        arguments: ["deactivate_other", "deactivate_current", "session", "client"], [0.5, 100.0])
+  func test_SS_D512_R1_001_ClientExit(_ boundary: String, _ margin: Double) async {
+    prepareD512Fixture()
+    testHandler.prefs.d512RerankMargin = margin
+    InputSession.current = ["deactivate_current", "session"].contains(boundary) ? testSession : nil
+    defer { InputSession.current = nil }
+    testSession.commit(text: "前文")
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    let visible = testSession.state.displayedText
+    #expect(visible == (margin == 0.5 ? "世事" : "試試"))
+    #expect(testHandler.d512SentenceRerank.context == "前文")
+    switch boundary {
+    case "deactivate_other":
+      testSession.performServerDeactivation()
+    case "deactivate_current":
+      testSession.performServerDeactivation()
+      #expect(testSession.state.displayedText == visible)
+      #expect(testHandler.d512SentenceRerank.context.isEmpty)
+      testSession.commitComposition()
+    case "session":
+      InputSession.current = nil
+      #expect(testHandler.d512SentenceRerank.context.isEmpty)
+      // 切 session 後緊接停用，第二次 leaveClient 不得蓋掉第一次保存的畫面句。
+      testSession.performServerDeactivation()
+    default:
+      testSession.updateClientProxyObjectIdentifier(MockClientProxy())
+      #expect(testHandler.d512SentenceRerank.context.isEmpty)
+      testSession.commitComposition()
+    }
+    #expect(testClientProxy.committedText == visible)
+    #expect(testHandler.d512SentenceRerank.context.isEmpty)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",

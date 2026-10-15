@@ -14,8 +14,8 @@ extension InputHandlerProtocol {
     #if compiler(>=6.4)
       let rerank = d512SentenceRerank
       rerank.invalidate()
-      let withdrewD512Pin = rerank.hasPin
-      if withdrewD512Pin {
+      let withdrewD512Pin = rerank.hasPin || rerank.keyCommitSnapshot != nil
+      if rerank.hasPin {
         rerank.keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
         rerank.withdraw(assembler: assembler)
         applyPersonalCandidatePreference()

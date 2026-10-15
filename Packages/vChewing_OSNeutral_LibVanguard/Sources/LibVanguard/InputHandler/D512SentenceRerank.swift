@@ -50,6 +50,7 @@
     var hasPin: Bool { !pins.isEmpty }
     var debounceSeconds: Double = 0.15
     var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String)?
+    private(set) var pendingCommitClientEpoch: UInt64?
     private(set) var lastEvaluation: Evaluation?
     var evaluationCompleted: (() -> Void)?
     var calibrationLog = D512SentenceRerank.sharedCalibrationLog
@@ -80,6 +81,12 @@
     }
 
     func leaveClient(assembler: Homa.Assembler) {
+      if !assembler.isEmpty {
+        pendingCommitClientEpoch = pendingCommitClientEpoch ?? clientEpoch
+        if hasPin {
+          keyCommitSnapshot = (assembler.keys, assembler.assembledSentence.map(\.value).joined())
+        }
+      }
       clientEpoch &+= 1
       invalidate()
       withdraw(assembler: assembler)
@@ -90,8 +97,13 @@
     func clear(assembler: Homa.Assembler) {
       invalidate()
       withdraw(assembler: assembler)
-      keyCommitSnapshot = nil
+      clearCommitSnapshot()
       finishRecords(text: nil)
+    }
+
+    func clearCommitSnapshot() {
+      keyCommitSnapshot = nil
+      pendingCommitClientEpoch = nil
     }
 
     func owns(_ node: Homa.Node?) -> Bool {

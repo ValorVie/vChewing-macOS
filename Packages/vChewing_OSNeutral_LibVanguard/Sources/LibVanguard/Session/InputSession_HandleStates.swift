@@ -115,7 +115,7 @@ extension SessionProtocol {
     }
     #if compiler(>=6.4)
       let rerank = inputHandler?.d512SentenceRerank
-      let clientEpoch = rerank?.clientEpoch
+      let clientEpoch = rerank?.pendingCommitClientEpoch ?? rerank?.clientEpoch
       let calibrationRecords = rerank?.takeCommitRecords() ?? []
     #endif
     let originalText = text

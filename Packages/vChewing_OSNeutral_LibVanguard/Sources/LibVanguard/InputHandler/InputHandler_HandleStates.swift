@@ -532,7 +532,7 @@ extension InputHandlerProtocol {
   )
     -> State {
     #if compiler(>=6.4)
-      d512SentenceRerank.keyCommitSnapshot = nil
+      d512SentenceRerank.clearCommitSnapshot()
     #endif
     furiousHighlightOverride = nil // 高亮覆寫僅供當拍消費（高亮預覽不走本函數）。
     if isConsideredEmptyForNow, !guarded { return State.ofAbortion() }
