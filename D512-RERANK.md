@@ -68,6 +68,10 @@ v1 只有單一 τ，沒有針對無前文另設門檻。試用時若覺得「�
 
 ## 收集校準資料
 
+在「候選字」設定頁選擇 D512 校正模式。預設「自動套用」（`D512RerankMode=0`）維持原有行為；「僅建議」（`D512RerankMode=1`）在停頓後保留畫面句與游標，以 `⇥ 變動片段` 提示建議，多段以 `／` 分隔。主開關關閉時模式選項停用。
+
+僅建議模式下，按無修飾鍵的 Tab 接受整句勝者，變動節點視同手選：個人排序等實際送出後更新，POM 沿用既有開關與觀察門檻。其他按鍵、Enter、Esc、切換客體或設定重繪會丟棄建議，不因忽略而學習。沒有建議時，Tab 維持原有的候選輪替。
+
 勾選「記錄 D512 校準資料」後，事件寫入：
 
 ```sh
@@ -84,10 +88,15 @@ vch_log="$vch_support/vChewing/D512/calibration.jsonl"
 | `candidates` | 每個候選的 `text`、`raw`、`modelLogP`、`personalHits`、`fused` |
 | `defaultIndex` | 重排前畫面句；即使不在 k-best 也納入計分 |
 | `winnerIndex` | 融合最高分者，尚未套用 τ 門檻 |
+| `mode` | `automatic` 或 `suggest`；保存當次評估模式 |
+| `suggested` | rerank 時是否真的掛起通過 τ 門檻的建議 |
+| `accepted` | commit／cancel 列：suggest 模式以 `true` 表示 Tab 接受、`false` 表示未接受；automatic 為 `null` |
 | `applied` | 是否真正套用 D512 pin |
 | `personalConflict`、`pomConflict` | 已套用結果是否與個人 pin／POM 自動覆寫衝突 |
 | `weight`、`margin`、`bonus` | 當次 w、τ、b |
 | `finalCommittedText` | 實際送出文字；可能已經過既有文字轉換 |
+
+suggest 的 rerank 列尚未套用，`applied=false`；Tab 接受後的後續列會補上 `accepted=true` 與 `applied=true`。忽略建議不會改變分數、產生負訊號或新增學習。以下重算腳本仍使用原有分數欄位，新增欄位不影響融合重算。
 
 ## 重算融合與調整參數
 
