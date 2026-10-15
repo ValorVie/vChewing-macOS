@@ -35,7 +35,7 @@
           FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
         }) else { return "i18n:D512.ModelMissing".i18n }
         do {
-          try D512ONNXScorer.verifyFiles(directory, useCache: false)
+          try D512ONNXScorer.verifyFiles(directory)
           _ = try D512Vocab(modelDirectory: directory)
           return nil
         } catch { return "i18n:D512.ModelInvalid".i18n }

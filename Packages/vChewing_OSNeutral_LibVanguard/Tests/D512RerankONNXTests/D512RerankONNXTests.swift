@@ -40,19 +40,22 @@ private struct Fixture: Decodable {
 struct D512RerankONNXTests {
   @available(macOS 14, *)
   @Test(.enabled(if: hasModel, "D512 model not present"))
-  func forcedVerificationDetectsAReplacedPreviouslyVerifiedModel() throws {
+  func successfulVerificationIsCachedAndFailuresCanRetry() throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let model = directory.appendingPathComponent("model.onnx")
-    try FileManager.default.createSymbolicLink(at: model, withDestinationURL: modelDir.appendingPathComponent("model.onnx"))
     try FileManager.default.copyItem(at: modelDir.appendingPathComponent("vocab.json"),
                                      to: directory.appendingPathComponent("vocab.json"))
+    try Data("invalid".utf8).write(to: model)
+    #expect(throws: (any Error).self) { try D512ONNXScorer.verifyFiles(directory) }
+    try FileManager.default.removeItem(at: model)
+    try FileManager.default.createSymbolicLink(at: model, withDestinationURL: modelDir.appendingPathComponent("model.onnx"))
     try D512ONNXScorer.verifyFiles(directory)
     // 刪除的是本測試的 symlink，不修改目的地模型。
     try FileManager.default.removeItem(at: model)
     try Data("replaced".utf8).write(to: model)
-    #expect(throws: (any Error).self) { try D512ONNXScorer.verifyFiles(directory, useCache: false) }
-    #expect(throws: (any Error).self) { try D512ONNXScorer.verifyFiles(directory) }
+    // 成功的目錄在同一 process 不重算；更換模型後須重新啟動。
+    try D512ONNXScorer.verifyFiles(directory)
   }
 
   @available(macOS 14, *)

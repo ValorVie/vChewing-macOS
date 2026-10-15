@@ -120,7 +120,7 @@
     @State
     private var isShowingIMKEOSNotice = false
     #if compiler(>=6.4)
-      @State private var d512UnavailableReason = D512SentenceRerank.unavailableReason
+      @State private var d512UnavailableReason: String? = nil
     #endif
 
     // MARK: - AppStorage Variables（僅保留需在 View 條件中讀取的屬性）

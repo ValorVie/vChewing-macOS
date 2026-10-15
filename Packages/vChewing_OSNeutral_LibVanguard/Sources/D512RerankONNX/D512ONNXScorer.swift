@@ -112,12 +112,11 @@ public final class D512ONNXScorer: D512Scoring {
   private static let lock = NSLock()
 
   /// Checks `model.onnx` / `vocab.json` against the pinned SHA-256; the result is cached per process.
-  public static func verifyFiles(_ dir: URL, useCache: Bool = true) throws {
+  public static func verifyFiles(_ dir: URL) throws {
     let key = dir.standardizedFileURL.resolvingSymlinksInPath().path
     lock.lock()
     defer { lock.unlock() }
-    if useCache, verified.contains(key) { return }
-    verified.remove(key)
+    guard !verified.contains(key) else { return }
     for (name, expected) in pinnedSHA256.sorted(by: { $0.key < $1.key }) {
       let actual = try sha256(dir.appendingPathComponent(name))
       guard actual == expected else {
