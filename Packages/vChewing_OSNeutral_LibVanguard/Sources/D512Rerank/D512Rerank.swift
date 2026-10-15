@@ -35,12 +35,12 @@ public struct D512Request: Decodable, Sendable {
   /// Candidate 0 is the engine default unless the dumper says otherwise.
   public var engineDefault: Int { engine_default ?? 0 }
 
-  public init(id: String, context: String, reading: [String], candidates: [Candidate]) {
+  public init(id: String, context: String, reading: [String], candidates: [Candidate], engineDefault: Int = 0) {
     self.id = id
     self.context = context
     self.reading = reading
     self.candidates = candidates
-    self.engine_default = nil
+    self.engine_default = engineDefault
   }
 
   private let engine_default: Int?
@@ -81,9 +81,9 @@ public struct D512Vocab: Sendable {
     // Ids 0–7 are specials (4 = UNK); characters start at 8, bases at 2.
     self.chars = Dictionary(
       characters.enumerated().compactMap { i, c in c.unicodeScalars.first.map { ($0, Int64(i + 8)) } },
-      uniquingKeysWith: { a, _ in a }
+      uniquingKeysWith: { _, b in b } // last wins, as Python's dict comprehension
     )
-    self.bases = Dictionary(bases.enumerated().map { ($1, Int64($0 + 2)) }, uniquingKeysWith: { a, _ in a })
+    self.bases = Dictionary(bases.enumerated().map { ($1, Int64($0 + 2)) }, uniquingKeysWith: { _, b in b })
     self.neutral = neutralTolerantLast
   }
 
@@ -103,6 +103,7 @@ public struct D512Vocab: Sendable {
   }
 
   /// Whole-case fallbacks (keep the engine default, do not run the model).
+  /// Unlike the harness, 1-syllable requests always fall back: its text task is out of scope here.
   public func fallbackReason(_ req: D512Request) -> Fallback? {
     let n = req.reading.count
     guard (Self.minSyllables ... Self.maxSyllables).contains(n),
@@ -125,11 +126,9 @@ public struct D512Vocab: Sendable {
     guard fallbackReason(req) == nil else { return nil }
     let sounds = req.reading.compactMap(syllable)
     var neutralSounds: [(Int64, Int64)]?
-    if let last = req.reading.last?.unicodeScalars, let mark = last.last {
-      let base = Self.tones[mark] == nil ? String(last) : String(String.UnicodeScalarView(last.dropLast()))
-      if neutral.contains(base), mark != "˙", let b = bases[base] {
-        neutralSounds = sounds.dropLast() + [(b, 5)]
-      }
+    if let last = req.reading.last.flatMap(Self.splitTone), last.tone != 5, neutral.contains(last.base),
+       let b = bases[last.base] {
+      neutralSounds = sounds.dropLast() + [(b, 5)]
     }
     return try req.candidates.map { cand in
       var s = try scorer.logProb(encode(context: req.context, sounds: sounds, candidate: cand.text))
@@ -164,10 +163,15 @@ public struct D512Vocab: Sendable {
   }
 
   func syllable(_ s: String) -> (base: Int64, tone: Int64)? {
+    guard let split = Self.splitTone(s) else { return nil }
+    return bases[split.base].map { ($0, split.tone) }
+  }
+
+  /// `"ㄇㄚˇ"` → `("ㄇㄚ", 3)`; no mark = 1st tone; nil for an empty string.
+  private static func splitTone(_ s: String) -> (base: String, tone: Int64)? {
     guard let mark = s.unicodeScalars.last else { return nil }
-    let tone = Self.tones[mark]
-    let base = tone == nil ? s : String(String.UnicodeScalarView(s.unicodeScalars.dropLast()))
-    return bases[base].map { ($0, tone ?? 1) }
+    guard let tone = tones[mark] else { return (s, 1) }
+    return (String(String.UnicodeScalarView(s.unicodeScalars.dropLast())), tone)
   }
 
   private let chars: [Unicode.Scalar: Int64]

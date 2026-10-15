@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
+import Foundation
 import Testing
 @testable import D512Rerank
 
@@ -68,6 +69,24 @@ struct D512RerankTests {
     #expect(vocab.fallbackReason(request("", ["ㄋㄧ", "ㄒㄧ"], ["你好"])) == .badReading)
     #expect(vocab.fallbackReason(request("", ["ㄋㄧ", "ㄏㄠ"], ["你好"])) == nil)
     #expect(try vocab.modelScores(request("", ["ㄋㄧ", "ㄏㄠ"], ["你他"]), scorer: Recorder()) == nil)
+    #expect(vocab.fallbackReason(request("", ["ㄋㄧ", "ㄏㄠ"], ["你好嗎"])) == .outOfLimits)
+    let badDefault = D512Request(
+      id: "t", context: "", reading: ["ㄋㄧ", "ㄏㄠ"], candidates: [.init(text: "你好", log_score: 0)], engineDefault: 1
+    )
+    #expect(vocab.fallbackReason(badDefault) == .outOfLimits)
+    let corrected = try JSONDecoder().decode(D512Request.self, from: Data("""
+    {"id":"t","context":"","reading":["ㄋㄧ","ㄏㄠ"],
+     "candidates":[{"text":"你好","log_score":0,"segments":[{"Correction":true}]}]}
+    """.utf8))
+    #expect(vocab.fallbackReason(corrected) == .correction)
+  }
+
+  @Test func neutralRuleStripsAnExplicitToneMark() throws {
+    let rec = Recorder()
+    // Harness: L=7, tones [3,3] → 7 + 1.5; neutral variant [3,5] → 7 + 2.
+    #expect(try vocab.modelScores(request("我", ["ㄋㄧˇ", "ㄇㄚˇ"], ["你嗎"]), scorer: rec) == [9])
+    #expect(rec.box.inputs.map { Array($0.tones.suffix(4)) } == [[3, 3, 0, 0], [3, 5, 0, 0]])
+    #expect(rec.box.inputs[1].bases == rec.box.inputs[0].bases)
   }
 
   @Test func fusionNeedsStrictMarginAndPrefersLowestIndexOnTies() {
