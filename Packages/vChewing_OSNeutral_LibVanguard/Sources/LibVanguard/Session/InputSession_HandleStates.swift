@@ -139,7 +139,7 @@ extension SessionProtocol {
       if let ctl = clientProxy {
         ctl.clientTextInsertion(with: theBuffer, replacementRange: replacementRange())
         #if compiler(>=6.4)
-          if ctl.hasClient(), rerank?.clientEpoch == clientEpoch {
+          if prefs.useD512SentenceRerank, ctl.hasClient(), rerank?.clientEpoch == clientEpoch {
             rerank?.noteCommit(theBuffer, calibrationEnabled: prefs.logD512Calibration)
           }
           rerank?.confirmCommitRecords(calibrationRecords, text: ctl.hasClient() ? theBuffer : nil,

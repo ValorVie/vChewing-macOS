@@ -300,6 +300,14 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(!testHandler.d512SentenceRerank.hasPin)
   }
 
+  @Test("SS-D512-R1-002 Disabled reranking does not collect committed context")
+  func test_SS_D512_R1_002_DisabledContext() {
+    prepareD512Fixture()
+    testHandler.prefs.useD512SentenceRerank = false
+    testSession.commit(text: "關閉期間的文字")
+    #expect(testHandler.d512SentenceRerank.context.isEmpty)
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",
