@@ -56,6 +56,13 @@ public struct D512Input: Equatable, Sendable {
   public var length: Int { ids.count }
 }
 
+// MARK: - D512RerankError
+
+public enum D512RerankError: Error, Equatable, Sendable {
+  /// The model returned NaN/±inf for a candidate; the whole request must keep the engine default.
+  case nonFiniteScore(requestID: String, candidate: Int, value: Double)
+}
+
 // MARK: - D512Scoring
 
 public protocol D512Scoring {
@@ -122,6 +129,7 @@ public struct D512Vocab: Sendable {
   /// Model log-probs per candidate, or nil when the request falls back.
   /// Neutral-tone rule (as the harness): a neutral-tolerant last syllable written without `˙`
   /// is also scored as `˙`, keeping the max.
+  /// Throws `D512RerankError.nonFiniteScore` when any model output is NaN/±inf.
   public func modelScores(_ req: D512Request, scorer: some D512Scoring) throws -> [Double]? {
     guard fallbackReason(req) == nil else { return nil }
     let sounds = req.reading.compactMap(syllable)
@@ -130,12 +138,29 @@ public struct D512Vocab: Sendable {
        let b = bases[last.base] {
       neutralSounds = sounds.dropLast() + [(b, 5)]
     }
-    return try req.candidates.map { cand in
-      var s = try scorer.logProb(encode(context: req.context, sounds: sounds, candidate: cand.text))
+    return try req.candidates.enumerated().map { i, cand in
+      let finite = { (s: Double) throws -> Double in
+        guard s.isFinite else { throw D512RerankError.nonFiniteScore(requestID: req.id, candidate: i, value: s) }
+        return s
+      }
+      var s = try finite(scorer.logProb(encode(context: req.context, sounds: sounds, candidate: cand.text)))
       if let alt = neutralSounds {
-        s = max(s, try scorer.logProb(encode(context: req.context, sounds: alt, candidate: cand.text)))
+        s = max(s, try finite(scorer.logProb(encode(context: req.context, sounds: alt, candidate: cand.text))))
       }
       return s
+    }
+  }
+
+  /// Fused pick for one request. Any scoring error (fallback-worthy model output, inference failure)
+  /// keeps the engine default for the whole request and is returned alongside, never swallowed.
+  public func rerank(_ req: D512Request, scorer: some D512Scoring, weight: Double, margin: Double)
+    -> (choice: Int, error: (any Error)?) {
+    do {
+      let model = try modelScores(req, scorer: scorer)
+      let engine = req.candidates.map(\.log_score)
+      return (D512Fusion.choose(engine: engine, model: model, default: req.engineDefault, weight: weight, margin: margin), nil)
+    } catch {
+      return (req.engineDefault, error)
     }
   }
 
@@ -183,11 +208,13 @@ public struct D512Vocab: Sendable {
 
 public enum D512Fusion {
   /// `fused = engine + w × model`; a non-default candidate wins only by a strict margin `> τ`.
-  /// Ties on the max pick the lowest index, as Python's `max`. `model == nil` keeps the default.
+  /// Ties on the max pick the lowest index, as Python's `max`. `model == nil`, mismatched lengths,
+  /// an out-of-range default or any non-finite fused score keep the default.
   public static func choose(engine: [Double], model: [Double]?, default d: Int, weight w: Double, margin tau: Double)
     -> Int {
-    guard let model else { return d }
+    guard let model, model.count == engine.count, engine.indices.contains(d) else { return d }
     let fused = zip(engine, model).map { $0 + w * $1 }
+    guard fused.allSatisfy(\.isFinite) else { return d }
     var best = 0
     for i in fused.indices where fused[i] > fused[best] { best = i }
     return best != d && fused[best] - fused[d] > tau ? best : d

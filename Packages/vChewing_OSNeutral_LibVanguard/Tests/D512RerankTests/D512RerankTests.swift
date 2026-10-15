@@ -89,6 +89,37 @@ struct D512RerankTests {
     #expect(rec.box.inputs[1].bases == rec.box.inputs[0].bases)
   }
 
+  /// Returns `bad` for candidate "你嗎" (last target id 4), -1 otherwise.
+  private struct Injected: D512Scoring {
+    let bad: Double
+    func logProb(_ input: D512Input) throws -> Double { input.targetIds.last == 4 ? bad : -1 }
+  }
+
+  @Test(arguments: [Double.nan, .infinity])
+  func nonFiniteModelScoreKeepsEngineDefaultAndReportsIt(bad: Double) throws {
+    let req = D512Request(
+      id: "nf", context: "", reading: ["ㄋㄧ", "ㄏㄠ"],
+      candidates: [.init(text: "你好", log_score: -1), .init(text: "你嗎", log_score: -1.5)]
+    )
+    #expect {
+      try vocab.modelScores(req, scorer: Injected(bad: bad))
+    } throws: { error in
+      guard case let .nonFiniteScore(id, candidate, value) = error as? D512RerankError else { return false }
+      return id == "nf" && candidate == 1 && (value.isNaN ? bad.isNaN : value == bad)
+    }
+    let (choice, error) = vocab.rerank(req, scorer: Injected(bad: bad), weight: 0.5, margin: 0.5)
+    #expect(choice == 0)
+    #expect(error is D512RerankError)
+    #expect(vocab.rerank(req, scorer: Injected(bad: -1), weight: 0.5, margin: 0.5).error == nil)
+  }
+
+  @Test(arguments: [Double.nan, .infinity])
+  func fusionKeepsDefaultOnNonFiniteInput(bad: Double) {
+    #expect(D512Fusion.choose(engine: [0, -1], model: [0, bad], default: 0, weight: 0.5, margin: 0.5) == 0)
+    #expect(D512Fusion.choose(engine: [0, bad], model: [0, 0], default: 0, weight: 0.5, margin: 0.5) == 0)
+    #expect(D512Fusion.choose(engine: [0, -1], model: [0], default: 0, weight: 0.5, margin: 0.5) == 0)
+  }
+
   @Test func fusionNeedsStrictMarginAndPrefersLowestIndexOnTies() {
     let engine = [-1.0, -1.2, -3.0]
     // fused = [-2, -1.2, -2]: candidate 1 leads by 0.8.
