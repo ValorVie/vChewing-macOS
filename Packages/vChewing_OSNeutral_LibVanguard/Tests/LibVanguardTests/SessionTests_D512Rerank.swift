@@ -324,6 +324,73 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(!testSession.state.candidates.contains { $0.value == "看" })
   }
 
+  @Test("SS-D512-R2-001 Read-only queries preserve the displayed commit across client exits",
+        arguments: ["current", "session", "client"])
+  func test_SS_D512_R2_001_ComposedStringBeforeCommit(_ boundary: String) async {
+    prepareD512Fixture()
+    InputSession.current = testSession
+    defer { InputSession.current = nil }
+    testSession.commit(text: "前文")
+    testClientProxy.clear()
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    let visible = testSession.state.displayedText
+    #expect(visible == "世事")
+    let rerank = testHandler.d512SentenceRerank
+    let oldEpoch = rerank.clientEpoch
+    switch boundary {
+    case "current": testSession.performServerDeactivation()
+    case "session": InputSession.current = nil
+    default: testSession.updateClientProxyObjectIdentifier(MockClientProxy())
+    }
+    #expect(rerank.keyCommitSnapshot?.text == visible)
+    #expect(rerank.pendingCommitClientEpoch == oldEpoch)
+    // 只產生狀態、沒有重繪的呼叫者也必須保留待送資料。
+    _ = testHandler.generateStateOfInputting(sansReading: true)
+    #expect(rerank.keyCommitSnapshot?.text == visible)
+    #expect(rerank.pendingCommitClientEpoch == oldEpoch)
+    let queried = testSession.composedString() as? String
+    #expect(queried == visible)
+    #expect(testSession.state.displayedText == visible)
+    #expect(rerank.keyCommitSnapshot?.text == visible)
+    #expect(rerank.pendingCommitClientEpoch == oldEpoch)
+    testSession.commitComposition()
+    #expect(testClientProxy.committedText == visible)
+    #expect(rerank.context.isEmpty)
+    #expect(rerank.keyCommitSnapshot == nil)
+    #expect(rerank.pendingCommitClientEpoch == nil)
+  }
+
+  @Test("SS-D512-R2-002 Settings redraw replaces the pending displayed commit without a key event",
+        arguments: ["d512", "personal"])
+  func test_SS_D512_R2_002_SettingsRedraw(_ setting: String) async {
+    prepareD512Fixture()
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == "世事")
+    testSession.updateClientProxyObjectIdentifier(MockClientProxy())
+    let rerank = testHandler.d512SentenceRerank
+    #expect(rerank.keyCommitSnapshot != nil)
+    #expect(rerank.pendingCommitClientEpoch != nil)
+    testHandler.prefs.useD512SentenceRerank = false
+    if setting == "d512" {
+      testSession.refreshD512SentenceRerank()
+    } else {
+      testHandler.prefs.usePersonalCandidatePreference = false
+      testSession.refreshPersonalCandidatePreference()
+    }
+    let redrawn = testSession.state.displayedText
+    #expect(redrawn == "試試")
+    #expect(rerank.keyCommitSnapshot == nil)
+    #expect(rerank.pendingCommitClientEpoch == nil)
+    #expect(testSession.composedString() as? String == redrawn)
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == redrawn)
+    #expect(rerank.context.isEmpty)
+    #expect(rerank.keyCommitSnapshot == nil)
+    #expect(rerank.pendingCommitClientEpoch == nil)
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",

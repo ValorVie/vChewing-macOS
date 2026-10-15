@@ -316,6 +316,12 @@ public final class InputSession: SessionProtocol, Sendable {
     // 過濾掉尚未完成拼寫的注音。
     let sansReading: Bool = state.type == .ofInputting
     if state.hasComposition {
+      #if compiler(>=6.4)
+        if let snapshot = inputHandler.d512SentenceRerank.keyCommitSnapshot,
+           snapshot.keys == inputHandler.assembler.keys {
+          return snapshot.text
+        }
+      #endif
       textToCommit = IMEStateParsed(
         inputHandler
           .generateStateOfInputting(sansReading: sansReading)

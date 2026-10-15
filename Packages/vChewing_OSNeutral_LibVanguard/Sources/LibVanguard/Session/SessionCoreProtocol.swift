@@ -116,6 +116,10 @@ extension SessionCoreProtocol {
     // 狀態的內容——此時傳入本狀態的索引即屬越界，客體將無從量得而回報無效值
     // （`clientLineHeightRectForU16CursorPos:` 對無效值會逐位遞減探測，遂一律退回至
     // 前一個字元之座標）；症狀即為「面板擺在應有位置後方隔著一個字元的距離」。
+    #if compiler(>=6.4)
+      // 產生狀態可能只是查詢；實際重繪 Inputting 才取代舊畫面的待送快照。
+      if state.type == .ofInputting { inputHandler?.d512SentenceRerank.clearCommitSnapshot() }
+    #endif
     updateCompositionBufferDisplay()
     toggleCandidateUIVisibility(state.isCandidateContainer)
     showTooltip(

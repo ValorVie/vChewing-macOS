@@ -12,9 +12,10 @@ extension SessionProtocol {
       guard let inputHandler else { return }
       inputHandler.d512SentenceRerank.invalidate()
       inputHandler.d512SentenceRerank.setCalibrationEnabled(prefs.logD512Calibration)
-      let hadPin = inputHandler.d512SentenceRerank.hasPin
+      let needsRedraw = inputHandler.d512SentenceRerank.hasPin
+        || inputHandler.d512SentenceRerank.keyCommitSnapshot != nil
       inputHandler.d512SentenceRerank.withdraw(assembler: inputHandler.assembler)
-      if hadPin, refreshComposition, state.type == .ofInputting {
+      if needsRedraw, refreshComposition, state.type == .ofInputting {
         switchState(inputHandler.generateStateOfInputting())
       } else if refreshComposition {
         inputHandler.scheduleD512Rerank()
