@@ -45,6 +45,8 @@ extension Homa.Assembler {
   /// 格位中，第 0 條不保證高於其餘路徑。搜尋不呼叫供應器、感知器或修改既有節點。
   /// 非覆寫節點展開各 gram（語境 gram 須符合路徑前驅）；覆寫節點僅使用當前 gram，
   /// 依 PathFinder 相同的 `getScore` 計分，但允許其他分段繞過未受保護的節點。
+  /// 每個位置以單桶保留 k 個相異文字前綴；截點同分者最多保留至 4k 個。
+  /// 語境圖採此有界近似，不保證列出全圖的精確前 k 名。
   /// - Parameters:
   ///   - k: 1...8；超出範圍時拋出 `Homa.KBestError.invalidLimit`，且不組句。
   ///   - fixedRanges: 格位座標的半開區間。凡與區間相交的第 0 條路徑 gram，
@@ -73,14 +75,11 @@ extension Homa.Assembler {
     let first = Homa.KBestPath(grams: original, score: mostRecentPathScore)
     guard k > 1 else { return [first] }
 
-    // 語境會讓相同文字、不同分段的前綴具有不同的後續分數，因此須分開保留前驅二位。
-    // 純 unigram 圖不需要語境分桶，每個終點只保留 k 個相異文字即可。
-    let hasContext = segments.contains { $0.values.contains { $0.grams.contains { !$0.isUnigram } } }
-    var beams = [[KBestContext: [Homa.KBestPath]]](repeating: [:], count: length + 1)
-    beams[0][.init()] = [.init(grams: [], score: 0)]
+    var beams = [[Homa.KBestPath]](repeating: [], count: length + 1)
+    beams[0] = [.init(grams: [], score: 0)]
     for position in 0 ..< length {
-      let prefixes = beams[position].values.flatMap { kBestDistinct($0, limit: k) }
-      beams[position] = [:]
+      let prefixes = kBestDistinct(beams[position], limit: k)
+      beams[position] = []
       guard !prefixes.isEmpty else { continue }
       for span in segments[position].keys.sorted() where span > 0 && position + span <= length {
         guard let node = segments[position][span] else { continue }
@@ -92,14 +91,13 @@ extension Homa.Assembler {
           for edge in kBestEdges(node, previous: previous, anterior: anterior) {
             guard constraints.allSatisfy({ $0.range == range && $0.gram == edge.gram }) else { continue }
             let path = Homa.KBestPath(prefix: prefix, gram: edge.gram, edgeScore: edge.score)
-            let context = hasContext ? KBestContext(previous: edge.gram.value, anterior: previous) : .init()
-            beams[range.upperBound][context, default: []].append(path)
+            beams[range.upperBound].append(path)
           }
         }
       }
     }
-    let others = beams[length].values.flatMap { $0 }.filter { $0.text != first.text }
-    return [first] + kBestDistinct(others, limit: k - 1)
+    let others = beams[length].filter { $0.text != first.text }
+    return [first] + kBestDistinct(others, limit: k - 1).prefix(k - 1)
   }
 }
 
@@ -108,11 +106,6 @@ extension Homa.Assembler {
 private struct KBestFixedGram {
   let range: Range<Int>
   let gram: Homa.GramInPath
-}
-
-private struct KBestContext: Hashable {
-  var previous: String = ""
-  var anterior: String = ""
 }
 
 private func kBestEdges(
@@ -136,8 +129,13 @@ private func kBestEdges(
 }
 
 private func kBestDistinct(_ paths: [Homa.KBestPath], limit: Int) -> [Homa.KBestPath] {
+  guard limit > 0 else { return [] }
   var seen = Set<String>()
-  return Array(paths.sorted {
+  let ordered = paths.sorted {
     $0.score == $1.score ? $0.text < $1.text : $0.score > $1.score
-  }.filter { seen.insert($0.text).inserted }.prefix(limit))
+  }.filter { seen.insert($0.text).inserted }
+  guard ordered.count > limit else { return ordered }
+  // 附加後綴可能改變文字排序；保留截點同分者，但限制展開量。
+  let cutoff = ordered[limit - 1].score
+  return Array(ordered.prefix(4 * limit).prefix { $0.score >= cutoff })
 }

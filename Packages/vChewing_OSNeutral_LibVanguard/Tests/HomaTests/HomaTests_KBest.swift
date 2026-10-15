@@ -38,8 +38,9 @@ extension HomaTestsRoot {
       }
     }
 
-    @Test("K-best equals exhaustive unigram enumeration through six keys")
+    @Test("K-best equals small exhaustive unigram, override and bigram fixtures")
     func equalsExhaustiveEnumeration() throws {
+      var fixtures: [Homa.Assembler] = []
       for count in 1 ... 6 {
         let keys = (0 ..< count).map { "k\($0)" }
         let assembler = Homa.Assembler(gramQuerier: { query in
@@ -54,6 +55,20 @@ extension HomaTestsRoot {
           ]
         })
         for key in keys { try assembler.insertKey(key) }
+        fixtures.append(assembler)
+      }
+      let overridden = try fixture()
+      try overridden.overrideCandidate(.init(keyArray: ["a"], value: "假"), at: 0, type: .withSpecified)
+      fixtures.append(overridden)
+      let contextual = try fixture()
+      contextual.withNode(at: 1, segLength: 1) { node in
+        node.syncingGrams(from: node.grams + [
+          .init(keyArray: ["b"], current: "乙", previous: "甲", probability: -0.25),
+        ])
+      }
+      fixtures.append(contextual)
+      for assembler in fixtures {
+        _ = assembler.assemble()
         let baseline = assembler.assemble()
         let all = exhaustive(assembler)
         for k in 1 ... 8 {
@@ -65,10 +80,45 @@ extension HomaTestsRoot {
           #expect(Set(actual.map(\.text)).count == actual.count)
           for path in actual {
             #expect(path.score == all.first { $0.text == path.text }?.score)
-            #expect(path.rawUnigramLogScore == path.score)
+            #expect(path.rawUnigramLogScore == path.grams.reduce(0) { $0 + $1.gram.probability })
           }
         }
       }
+    }
+
+    @Test("Boundary ties survive pruning before a suffix reverses text order")
+    func retainsBoundaryTies() throws {
+      let assembler = Homa.Assembler(gramQuerier: { query in
+        let keys = query.map(\.first)
+        switch keys {
+        case ["a"]:
+          return ["a", "aa", "aaa"].map { .init(keyArray: keys, current: $0, probability: -1) }
+        case ["z"]:
+          return [.init(keyArray: keys, current: "z", probability: -1)]
+        default:
+          return []
+        }
+      })
+      for key in ["a", "z"] { try assembler.insertKey(key) }
+      #expect(try assembler.assembleKBest(k: 2).map(\.text) == ["az", "aaaz"])
+
+      // k=2 時只容許八個同分前綴；第九個的語境加分不得繞過 4k 上限。
+      let capped = Homa.Assembler(gramQuerier: { query in
+        let keys = query.map(\.first)
+        switch keys {
+        case ["a"]:
+          return (0 ..< 9).map { .init(keyArray: keys, current: "a\($0)", probability: -1) }
+        case ["z"]:
+          return [
+            .init(keyArray: keys, current: "z", probability: -1),
+            .init(keyArray: keys, current: "boosted", previous: "a8", probability: 10),
+          ]
+        default:
+          return []
+        }
+      })
+      for key in ["a", "z"] { try capped.insertKey(key) }
+      #expect(try capped.assembleKBest(k: 2).map(\.text) == ["a0z", "a1z"])
     }
 
     @Test("K-best deduplicates text across segmentations and retains macros")
@@ -132,8 +182,8 @@ extension HomaTestsRoot {
       #expect(assembler.config == expectedConfig)
     }
 
-    @Test("Equal prefix text retains different segment histories for contextual scoring")
-    func retainsDistinctContextHistories() throws {
+    @Test("A single beam merges equal prefix text across contextual histories")
+    func mergesContextHistories() throws {
       let entries: [String: [Homa.Gram]] = [
         "a": [.init(keyArray: ["a"], current: "A", probability: -2)],
         "b": [.init(keyArray: ["b"], current: "B", probability: -2)],
@@ -144,11 +194,8 @@ extension HomaTestsRoot {
       let assembler = Homa.Assembler(gramQuerier: { entries[$0.map(\.first).joined()] ?? [] })
       for key in ["a", "b", "c"] { try assembler.insertKey(key) }
       let paths = try assembler.assembleKBest(k: 8)
-      #expect(paths.map(\.text) == ["ABC", "ABZ"])
+      #expect(paths.map(\.text) == ["ABC"])
       #expect(paths.first?.grams.values == ["AB", "C"])
-      #expect(paths.last?.grams.values == ["A", "B", "Z"])
-      #expect(paths.last?.score == -4.25)
-      #expect(paths.last?.rawUnigramLogScore == -4.25)
     }
 
     @Test("Candidate zero captures a fresh contextual assembly exactly")
@@ -265,18 +312,29 @@ extension HomaTestsRoot {
     /// 不剪枝、展開所有路徑後才合併相同文字，作為小圖的獨立 oracle。
     private func exhaustive(_ assembler: Homa.Assembler) -> [(text: String, score: Double)] {
       var best: [String: Double] = [:]
-      func visit(_ start: Int, _ text: String, _ score: Double) {
+      func visit(_ start: Int, _ text: String, _ score: Double, _ previous: String, _ anterior: String) {
         if start == assembler.length {
           best[text] = max(best[text] ?? -.infinity, score)
           return
         }
         for (length, node) in assembler.segments[start] {
+          if node.isOverridden {
+            guard let gram = node.currentGram else { continue }
+            var copy = node
+            visit(start + length, text + gram.current,
+                  score + copy.getScore(previous: previous, anterior: anterior), gram.current, previous)
+            continue
+          }
           for gram in node.grams {
-            visit(start + length, text + gram.current, score + gram.probability)
+            if !gram.isUnigram {
+              guard !previous.isEmpty, gram.previous == previous,
+                    gram.anterior == nil || (!anterior.isEmpty && gram.anterior == anterior) else { continue }
+            }
+            visit(start + length, text + gram.current, score + gram.probability, gram.current, previous)
           }
         }
       }
-      visit(0, "", 0)
+      visit(0, "", 0, "", "")
       return best.map { (text: $0.key, score: $0.value) }.sorted {
         $0.score == $1.score ? $0.text < $1.text : $0.score > $1.score
       }
