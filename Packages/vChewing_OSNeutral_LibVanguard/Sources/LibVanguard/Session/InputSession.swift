@@ -319,7 +319,7 @@ public final class InputSession: SessionProtocol, Sendable {
       #if compiler(>=6.4)
         if let snapshot = inputHandler.d512SentenceRerank.keyCommitSnapshot,
            snapshot.keys == inputHandler.assembler.keys {
-          return snapshot.text
+          return IMEStateParsed.convertTextIfNeeded(snapshot.text)
         }
       #endif
       textToCommit = IMEStateParsed(

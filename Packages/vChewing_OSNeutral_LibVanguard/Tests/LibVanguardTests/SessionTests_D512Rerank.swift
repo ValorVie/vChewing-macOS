@@ -391,6 +391,39 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(rerank.pendingCommitClientEpoch == nil)
   }
 
+  @Test("SS-D512-R2-003 Snapshot queries apply kanji conversion only when both lengths match")
+  func test_SS_D512_R2_003_ConvertedSnapshot() async {
+    prepareD512Fixture()
+    let originalConversion = SessionHost.shared.kanjiConversionIfRequired
+    defer { SessionHost.shared.kanjiConversionIfRequired = originalConversion }
+    let sameLengthConversion: (String) -> String = {
+      $0.replacingOccurrences(of: "世", with: "丗")
+    }
+    SessionHost.shared.kanjiConversionIfRequired = sameLengthConversion
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == "世事")
+    #expect(IMEStateParsed(testSession.state).displayedTextConverted == "丗事")
+    testSession.updateClientProxyObjectIdentifier(MockClientProxy())
+    #expect(testSession.composedString() as? String == "丗事")
+    // 字元數相同、UTF-16 長度不同的轉換也不能改動組字查詢。
+    SessionHost.shared.kanjiConversionIfRequired = {
+      $0.replacingOccurrences(of: "世", with: "😀")
+    }
+    #expect(testSession.composedString() as? String == "世事")
+    // UTF-16 長度相同、字元數不同也須保留原文。
+    SessionHost.shared.kanjiConversionIfRequired = {
+      $0.replacingOccurrences(of: "世事", with: "😀")
+    }
+    #expect(testSession.composedString() as? String == "世事")
+    SessionHost.shared.kanjiConversionIfRequired = sameLengthConversion
+    testSession.commitComposition()
+    #expect(testClientProxy.committedText == "丗事")
+    #expect(testHandler.d512SentenceRerank.context.isEmpty)
+    #expect(testHandler.d512SentenceRerank.keyCommitSnapshot == nil)
+    #expect(testHandler.d512SentenceRerank.pendingCommitClientEpoch == nil)
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",

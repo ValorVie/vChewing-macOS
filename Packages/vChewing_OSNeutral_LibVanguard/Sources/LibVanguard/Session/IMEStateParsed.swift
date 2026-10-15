@@ -116,7 +116,7 @@ extension IMEStateParsed {
 // MARK: - convertTextIfNeeded / displayedTextConverted / displayTextSegmentsConverted
 
 extension IMEStateParsed {
-  private func convertTextIfNeeded(_ rawStr: String) -> String {
+  static func convertTextIfNeeded(_ rawStr: String) -> String {
     var result = SessionHost.shared.kanjiConversionIfRequired(rawStr)
     if result.utf16.count != rawStr.utf16.count
       || result.count != rawStr.count {
@@ -126,11 +126,11 @@ extension IMEStateParsed {
   }
 
   public var displayedTextConverted: String {
-    convertTextIfNeeded(state.displayedText)
+    Self.convertTextIfNeeded(state.displayedText)
   }
 
   public var displayTextSegmentsConverted: [String] {
-    state.displayTextSegments.map(convertTextIfNeeded)
+    state.displayTextSegments.map(Self.convertTextIfNeeded)
   }
 }
 
