@@ -112,10 +112,11 @@
       for change in suggestion.changes {
         let range = change.start ..< change.start + change.gram.segLength
         guard !fixed.contains(where: { $0.overlaps(range) }),
-              assembler.overrideCandidate(
-                change.gram.asCandidatePair, at: range.upperBound - 1, overrideType: .withSpecified,
+              (try? assembler.overrideCandidate(
+                change.gram.asCandidatePair, atSegment: change.start, segLength: change.gram.segLength,
+                type: .withSpecified,
                 isExplicitlyOverridden: true, perceptionHandler: { _ in }
-              ) else { return false }
+              )) != nil else { return false }
       }
       assembler.assemble()
       // 由 Homa 解除相交覆寫，不建立 D512 pin；整條路徑一致後才記手選與 POM。

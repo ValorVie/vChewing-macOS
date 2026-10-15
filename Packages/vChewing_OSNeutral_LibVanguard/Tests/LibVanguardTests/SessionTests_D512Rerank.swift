@@ -652,6 +652,64 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(try d512CalibrationRows(url).last?["accepted"] as? Bool == true)
   }
 
+  @Test("SS-D512-A25-R2-001 Repeated readings accept the exact suggested node",
+        arguments: [(2, false), (3, false), (3, true)])
+  func test_SS_D512_A25_R2_001_NodeAnchor(_ configuration: (Int, Bool)) async throws {
+    let (length, tail) = configuration
+    let url = prepareD512SuggestFixture()
+    struct Favor: D512Scoring {
+      let desired: [Int64]
+      func logProb(_ input: D512Input) throws -> Double { input.targetIds == desired ? 0 : -100 }
+    }
+    let word = length == 2 ? "世事" : "世事時"
+    let expected = tail ? "試" + word : word + "試"
+    let ids: [Int64] = length == 2 ? [3, 4] : [3, 4, 5]
+    let log = testHandler.d512SentenceRerank.calibrationLog
+    testHandler.d512SentenceRerank = D512SentenceRerank(
+      scorer: Favor(desired: tail ? [2] + ids : ids + [2]),
+      vocab: .init(characters: ["試", "世", "事", "時"], bases: ["ㄕ"], neutralTolerantLast: [])
+    )
+    testHandler.d512SentenceRerank.calibrationLog = log
+    testHandler.d512SentenceRerank.debounceSeconds = 0.01
+    let assembler = Homa.Assembler(gramQuerier: { query in
+      let keys = query.map(\.first)
+      if keys.count == 1 { return [.init(keyArray: keys, current: "試", probability: -4)] }
+      guard keys.count == length else { return [] }
+      return [.init(keyArray: keys, current: String(repeating: "試", count: length), probability: -1),
+              .init(keyArray: keys, current: word, probability: -3)]
+    })
+    try assembler.insertKeys(Array(repeating: .singleKey("ㄕˋ"), count: length + 1))
+    testHandler.assembler = assembler
+    testSession.switchState(testHandler.generateStateOfInputting())
+    await waitForD512()
+    let suggestion = try #require(testHandler.d512SentenceRerank.pendingSuggestion)
+    #expect(suggestion.grams.map(\.value).joined() == expected)
+    #expect(suggestion.changes.map(\.start) == (tail ? [1] : [0, length]))
+    let expectedPOMSaves = tail ? 1 : 2
+    let pair = Homa.CandidatePair(keyArray: Array(repeating: "ㄕˋ", count: length), value: word)
+    let store = testHandler.currentLM.candidateRanking
+    let count = store.count(for: pair)
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    press(.tabEvent)
+    #expect(testSession.state.displayedText == expected)
+    #expect(assembler.assembledSentence.map(\.value).joined() == expected)
+    #expect(testHandler.d512SentenceRerank.lastCalibrationRecord?.accepted == true)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(pomSaves == expectedPOMSaves)
+    #expect(store.count(for: pair) == count)
+    press(.dataArrowHome)
+    #expect(testSession.state.displayedText == expected)
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == expected)
+    #expect(store.count(for: pair) == count + 1)
+    #expect(pomSaves == expectedPOMSaves)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["phase"] as? String == "commit")
+    #expect(row["accepted"] as? Bool == true)
+  }
+
   private func prepareD512SuggestFixture(mode: Int = 1) -> URL {
     prepareD512Fixture()
     testUI.currentSessionID = testSession.id
