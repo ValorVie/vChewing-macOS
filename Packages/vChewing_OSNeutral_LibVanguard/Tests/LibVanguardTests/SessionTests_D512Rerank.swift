@@ -424,6 +424,161 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(testHandler.d512SentenceRerank.pendingCommitClientEpoch == nil)
   }
 
+  @Test("SS-D512-A25-S1 Suggestion preserves the default and only shows changed text", arguments: [2, 4])
+  func test_SS_D512_A25_S1_Suggest(_ readings: Int) async throws {
+    let url = prepareD512SuggestFixture()
+    typeSentenceOrCandidates(readings == 2 ? "g4g4" : "g4g4g4g4")
+    let cursor = testHandler.assembler.cursor
+    await waitForD512()
+    #expect(testSession.state.displayedText == (readings == 2 ? "試試" : "試試試試"))
+    #expect(testHandler.assembler.cursor == cursor)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(testStatusUI.isShown)
+    #expect(testStatusUI.shownTooltip == "⇥ 世事")
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion != nil)
+    let row = try #require(d512CalibrationRows(url).first)
+    #expect(row["mode"] as? String == "suggest")
+    #expect(row["suggested"] as? Bool == true)
+    #expect(row["applied"] as? Bool == false)
+  }
+
+  @Test("SS-D512-A25-S2 Tab accepts changed nodes as manual selections", arguments: [2, 4])
+  func test_SS_D512_A25_S2_Accept(_ readings: Int) async throws {
+    let url = prepareD512SuggestFixture()
+    typeSentenceOrCandidates(readings == 2 ? "g4g4" : "g4g4g4g4")
+    await waitForD512()
+    let before = testHandler.assembler.assembledSentence
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    let pomGeneration = LXAssembly.LXFacade.pomGeneration
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    let pair = Homa.CandidatePair(keyArray: ["ㄕˋ", "ㄕˋ"], value: "世事")
+    let store = testHandler.currentLM.candidateRanking
+    let count = store.count(for: pair)
+    let unchangedPair = Homa.CandidatePair(keyArray: ["ㄕˋ", "ㄕˋ"], value: "試試")
+    let unchangedCount = store.count(for: unchangedPair)
+    let winner = readings == 2 ? "世事" : "試試世事"
+    let start = readings - 2
+    testHandler.furiousTrail = ["shi"]
+    press(.tabEvent)
+    #expect(testHandler.furiousTrail.isEmpty)
+    #expect(testSession.state.displayedText == winner)
+    #expect(!testStatusUI.isShown)
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    #expect(testHandler.candidateSelectionLearning.protectedRanges(assembler: testHandler.assembler).contains(start ..< readings))
+    #expect(store.count(for: pair) == count)
+    #expect(pomSaves == 1)
+    #expect(LXAssembly.LXFacade.pomGeneration == pomGeneration + 1)
+    #expect(testHandler.currentLM.fetchPOMSuggestion(
+      assembledResult: before, cursor: start, timestamp: Date().timeIntervalSince1970
+    ).candidates.contains { $0.value == "世事" })
+    // 下一鍵撤回 D512 pin，已接受的手選仍須保留至實際送出才學習。
+    press(.dataArrowHome)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(testSession.state.displayedText == winner)
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == winner)
+    #expect(store.count(for: pair) == count + 1)
+    #expect(store.count(for: unchangedPair) == unchangedCount)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["phase"] as? String == "commit")
+    #expect(row["accepted"] as? Bool == true)
+  }
+
+  @Test("SS-D512-A25-S3 Ignoring a suggestion does not learn", arguments: ["typing", "enter", "escape"])
+  func test_SS_D512_A25_S3_Ignore(_ action: String) async throws {
+    let url = prepareD512SuggestFixture()
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    let pair = Homa.CandidatePair(keyArray: ["ㄕˋ", "ㄕˋ"], value: "世事")
+    let count = testHandler.currentLM.candidateRanking.count(for: pair)
+    switch action {
+    case "typing":
+      typeSentenceOrCandidates("g4")
+      #expect(testSession.state.displayedText == "試試試")
+      press(.dataEnterReturn)
+    case "enter": press(.dataEnterReturn)
+    default:
+      testHandler.prefs.escToCleanInputBuffer = true
+      press(.escEvent)
+    }
+    #expect(!testStatusUI.isShown)
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    #expect(testClientProxy.committedText == (action == "escape" ? "" : action == "typing" ? "試試試" : "試試"))
+    #expect(testHandler.currentLM.candidateRanking.count(for: pair) == count)
+    #expect(testHandler.candidateSelectionLearning.protectedRanges(assembler: testHandler.assembler).isEmpty)
+    #expect(pomSaves == 0)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["accepted"] as? Bool == false)
+  }
+
+  @Test("SS-D512-A25-S4 Tab without a suggestion keeps candidate revolution", arguments: [0, 1])
+  func test_SS_D512_A25_S4_Revolve(_ mode: Int) async throws {
+    let url = prepareD512SuggestFixture(mode: mode)
+    #expect(UserDef(rawValue: "D512RerankMode")?.intDefaultValue == 0)
+    testHandler.prefs.d512RerankMargin = 100
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == "試試")
+    press(.tabEvent)
+    #expect(testSession.state.displayedText == "逝世")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "逝世")
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["mode"] as? String == (mode == 0 ? "automatic" : "suggest"))
+    #expect(row["accepted"] is NSNull || (mode == 1 && row["accepted"] as? Bool == false))
+  }
+
+  @Test("SS-D512-A25-S5 Client exits and settings discard suggestions", arguments: ["current", "session", "client", "refresh", "off"])
+  func test_SS_D512_A25_S5_Discard(_ boundary: String) async throws {
+    let url = prepareD512SuggestFixture()
+    InputSession.current = testSession
+    defer { InputSession.current = nil }
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    switch boundary {
+    case "current": testSession.performServerDeactivation()
+    case "session": InputSession.current = nil
+    case "client": testSession.updateClientProxyObjectIdentifier(MockClientProxy())
+    case "off":
+      testHandler.prefs.useD512SentenceRerank = false
+      testSession.refreshD512SentenceRerank()
+    default: testSession.refreshD512SentenceRerank()
+    }
+    #expect(!testStatusUI.isShown)
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(testSession.state.displayedText == "試試")
+    testSession.commitComposition()
+    #expect(testClientProxy.committedText == "試試")
+    #expect(pomSaves == 0)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["accepted"] as? Bool == false)
+  }
+
+  private func prepareD512SuggestFixture(mode: Int = 1) -> URL {
+    prepareD512Fixture()
+    testUI.currentSessionID = testSession.id
+    testUI.tooltipUI = testStatusUI
+    UserDefaults.current.set(mode, forKey: "D512RerankMode")
+    testHandler.prefs.logD512Calibration = true
+    let url = URL(fileURLWithPath: NSTemporaryDirectory())
+      .appendingPathComponent(UUID().uuidString).appendingPathComponent("calibration.jsonl")
+    testHandler.d512SentenceRerank.calibrationLog = D512CalibrationLog(url: url)
+    return url
+  }
+
+  private func d512CalibrationRows(_ url: URL) throws -> [[String: Any]] {
+    testHandler.d512SentenceRerank.calibrationLog.flush()
+    return try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map {
+      try #require(JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any])
+    }
+  }
+
   #if canImport(D512RerankONNX)
     @available(macOS 14, *)
     @Test("SS-D512-020 Real sessions export twenty cases for the independent Python harness",

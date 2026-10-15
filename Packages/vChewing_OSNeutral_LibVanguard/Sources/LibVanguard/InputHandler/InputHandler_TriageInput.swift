@@ -13,6 +13,8 @@ extension InputHandlerProtocol {
     guard let session = session else { return false }
     #if compiler(>=6.4)
       let rerank = d512SentenceRerank
+      if input.isTab, input.commonKeyModifierFlags.isEmpty, !hasFuriousFrontPending,
+         rerank.acceptSuggestion(self) { return true }
       rerank.invalidate()
       let withdrewD512Pin = rerank.hasPin || rerank.keyCommitSnapshot != nil
       if rerank.hasPin {

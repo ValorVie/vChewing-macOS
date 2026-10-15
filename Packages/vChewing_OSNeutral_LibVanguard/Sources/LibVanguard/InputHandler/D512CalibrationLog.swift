@@ -29,8 +29,11 @@
     let reading: [String]
     let candidates: [Candidate]
     let defaultIndex, winnerIndex: Int
-    let applied, personalConflict, pomConflict: Bool
+    var applied, personalConflict, pomConflict: Bool
     let weight, margin, bonus: Double
+    var mode = "automatic"
+    var suggested = false
+    var accepted: Bool?
     var finalCommittedText: String?
 
     func encode(to encoder: any Encoder) throws {
@@ -47,6 +50,9 @@
       try c.encode(weight, forKey: .weight)
       try c.encode(margin, forKey: .margin)
       try c.encode(bonus, forKey: .bonus)
+      try c.encode(mode, forKey: .mode)
+      try c.encode(suggested, forKey: .suggested)
+      try c.encode(accepted, forKey: .accepted)
       try c.encode(finalCommittedText, forKey: .finalCommittedText)
     }
   }

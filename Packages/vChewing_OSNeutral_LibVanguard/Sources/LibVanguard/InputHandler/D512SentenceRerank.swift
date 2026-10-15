@@ -52,6 +52,8 @@
     var keyCommitSnapshot: (keys: [Homa.PossibleKey], text: String, frontCandidate: Homa.CandidatePair?)?
     private(set) var pendingCommitClientEpoch: UInt64?
     private(set) var lastEvaluation: Evaluation?
+    private(set) var pendingSuggestion: PendingSuggestion?
+    private var dismissSuggestionTooltip: (() -> Void)?
     var evaluationCompleted: (() -> Void)?
     var calibrationLog = D512SentenceRerank.sharedCalibrationLog
     private(set) var lastCalibrationRecord: D512CalibrationRecord?
@@ -63,7 +65,96 @@
       if !enabled { pendingRecords.removeAll() }
     }
 
-    func invalidate() { generation &+= 1 }
+    func invalidate() {
+      discardSuggestion()
+      generation &+= 1
+    }
+
+    func discardSuggestion() {
+      pendingSuggestion = nil
+      dismissSuggestionTooltip?()
+      dismissSuggestionTooltip = nil
+    }
+
+    struct PendingSuggestion {
+      struct Change {
+        let start: Int
+        let gram: Homa.GramInPath
+      }
+
+      let generation: UInt64
+      let keys: [Homa.PossibleKey]
+      let grams, defaultGrams: [Homa.GramInPath]
+      let changes: [Change]
+      let text, recordID: String
+      let personalConflict, pomConflict: Bool
+    }
+
+    /// Tab 是顯式選字；只為相對 default 改變的節點建立既有手選收據與 POM。
+    func acceptSuggestion<Handler: InputHandlerProtocol>(_ handler: Handler) -> Bool {
+      guard let suggestion = pendingSuggestion, suggestion.generation == generation,
+            suggestion.keys == handler.assembler.keys, handler.prefs.useD512SentenceRerank,
+            handler.prefs.d512RerankMode == 1, handler.session?.state.type == .ofInputting else { return false }
+      discardSuggestion()
+      handler.currentLM.syncPrefs()
+      handler.synchronizePersonalCandidatePreference()
+      handler.invalidateFuriousTrail()
+      let assembler = handler.assembler
+      let fixed = handler.candidateSelectionLearning.protectedRanges(assembler: assembler)
+      handler.personalCandidatePreference.withdraw(assembler: assembler)
+      guard apply(suggestion.grams, assembler: assembler, fixedRanges: fixed) else {
+        handler.applyPersonalCandidatePreference()
+        return false
+      }
+      var mirror: [FIUUID: Homa.NodeOverrideStatus] = [:]
+      for change in suggestion.changes {
+        let range = change.start ..< change.start + change.gram.segLength
+        guard !fixed.contains(where: { $0.overlaps(range) }),
+              let node = assembler.segments[change.start][change.gram.segLength] else { continue }
+        var status = node.overrideStatus
+        // 顯式接受取代模型 mirror；下一鍵撤 pin 時沿用 v1 的「已被手選改動則保留」。
+        status.isExplicitlyOverridden = true
+        mirror[node.id] = status
+      }
+      assembler.restoreFromNodeOverrideStatusMirror(mirror)
+      assembler.assemble()
+      for change in suggestion.changes {
+        guard let node = assembler.segments[change.start][change.gram.segLength],
+              mirror[node.id] != nil else { continue }
+        let pair = change.gram.asCandidatePair
+        if handler.isPersonalCandidatePreferenceModeEligible, handler.isStandardRankingCandidate(pair) {
+          handler.candidateSelectionLearning.record(
+            pair, at: change.start, assembler: assembler, store: handler.currentLM.candidateRanking
+          )
+        }
+        if handler.prefs.fetchSuggestionsFromPerceptionOverrideModel,
+           let intel = Homa.makePerceptionIntel(
+             previouslyAssembled: suggestion.defaultGrams, currentAssembled: assembler.assembledSentence,
+             cursor: change.start
+           ), intel.scoreFromLM > -12 {
+          handler.prefs.failureFlagForPOMObservation = true
+          handler.currentLM.memorizePerception(
+            (intel.contextualizedGramKey, intel.candidate), timestamp: Date().timeIntervalSince1970,
+            saveCallback: handler.pomSaveCallback
+          )
+          handler.prefs.failureFlagForPOMObservation = false
+        }
+      }
+      func markAccepted(_ record: inout D512CalibrationRecord) {
+        guard record.id == suggestion.recordID else { return }
+        record.accepted = true
+        record.applied = true
+        record.personalConflict = suggestion.personalConflict
+        record.pomConflict = suggestion.pomConflict
+      }
+      for i in pendingRecords.indices { markAccepted(&pendingRecords[i]) }
+      if var record = lastCalibrationRecord {
+        markAccepted(&record)
+        lastCalibrationRecord = record
+      }
+      handler.session?.switchState(handler.generateStateOfInputting())
+      return true
+    }
 
     func schedule(_ action: @escaping @MainActor @Sendable () -> Void) {
       invalidate()
@@ -105,6 +196,7 @@
     }
 
     func clearCommitSnapshot() {
+      discardSuggestion()
       keyCommitSnapshot = nil
       pendingCommitClientEpoch = nil
     }
@@ -219,18 +311,21 @@
       let context = context
       let w = handler.prefs.d512RerankWeight, tau = handler.prefs.d512RerankMargin
       let b = handler.prefs.d512RerankPersonalBonus
+      let suggestMode = handler.prefs.d512RerankMode == 1
       let keys = assembler.keys
       let completion: @MainActor @Sendable (Evaluation?) -> Void = { [weak self, weak handler] evaluation in
           guard let self else { return }
           defer { self.evaluationCompleted?() }
           guard let handler, self.generation == token,
                 handler.prefs.useD512SentenceRerank, handler.session?.state.type == .ofInputting,
+                (handler.prefs.d512RerankMode == 1) == suggestMode,
                 handler.assembler.keys == keys,
                 handler.composer.isEmpty, handler.mixedAlphanumericalBuffer.isEmpty else { return }
           if let evaluation {
             self.lastEvaluation = evaluation
             var applied = false
-            if evaluation.choice != evaluation.defaultIndex {
+            let suggested = suggestMode && evaluation.choice != evaluation.defaultIndex
+            if !suggestMode, evaluation.choice != evaluation.defaultIndex {
               handler.personalCandidatePreference.withdraw(assembler: handler.assembler)
               applied = self.apply(
                 evaluation.paths[evaluation.choice].grams, assembler: handler.assembler, fixedRanges: fixed
@@ -239,7 +334,7 @@
                 handler.session?.switchState(handler.generateStateOfInputting())
               } else { handler.applyPersonalCandidatePreference() }
             }
-            let chosenText = evaluation.paths[applied ? evaluation.choice : evaluation.defaultIndex].text
+            let chosenText = evaluation.paths[applied || suggested ? evaluation.choice : evaluation.defaultIndex].text
             func conflicts(_ texts: [FixedText]) -> Bool {
               texts.contains { String(chosenText.dropFirst($0.range.lowerBound).prefix($0.range.count)) != $0.text }
             }
@@ -250,12 +345,36 @@
                       personalHits: path.personalHits, fused: evaluation.fused?[index])
               }, defaultIndex: evaluation.defaultIndex, winnerIndex: evaluation.winner,
               applied: applied, personalConflict: applied && conflicts(personal), pomConflict: applied && conflicts(pom),
-              weight: w, margin: tau, bonus: b
+              weight: w, margin: tau, bonus: b,
+              mode: suggestMode ? "suggest" : "automatic", suggested: suggested,
+              accepted: suggestMode ? false : nil
             )
             self.lastCalibrationRecord = record
             if self.calibrationEnabled, handler.prefs.logD512Calibration {
               self.pendingRecords.append(record)
               self.calibrationLog.append(record)
+            }
+            if suggested {
+              var start = 0
+              var changes: [PendingSuggestion.Change] = []
+              for gram in evaluation.paths[evaluation.choice].grams {
+                let end = start + gram.segLength
+                defer { start = end }
+                let same = defaultGrams.findGram(at: start).map {
+                  $0.range == start ..< end && $0.gram.asCandidatePair == gram.asCandidatePair
+                } ?? false
+                if !same, !fixed.contains(where: { $0.overlaps(start ..< end) }) {
+                  changes.append(.init(start: start, gram: gram))
+                }
+              }
+              let text = changes.map { $0.gram.value }.joined(separator: "／")
+              self.pendingSuggestion = .init(
+                generation: token, keys: keys, grams: evaluation.paths[evaluation.choice].grams,
+                defaultGrams: defaultGrams, changes: changes, text: text, recordID: record.id,
+                personalConflict: conflicts(personal), pomConflict: conflicts(pom)
+              )
+              self.dismissSuggestionTooltip = { [weak handler] in handler?.session?.showTooltip(nil) }
+              handler.session?.showTooltip("⇥ " + text)
             }
           }
       }
@@ -345,6 +464,7 @@
 
     /// 遞交可延後至下一個主佇列迴圈；先取出收據，避免 clear 將它記成取消。
     func takeCommitRecords() -> [D512CalibrationRecord] {
+      discardSuggestion()
       defer { pendingRecords.removeAll() }
       return calibrationEnabled ? pendingRecords : []
     }
