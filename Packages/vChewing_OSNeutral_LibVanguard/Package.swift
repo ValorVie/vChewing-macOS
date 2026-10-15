@@ -153,6 +153,10 @@ let package = Package(
     Target.target(
       name: "LibVanguard",
       dependencies: buildTargetDependencies {
+        "D512Rerank"
+        #if os(macOS)
+          "D512RerankONNX"
+        #endif
         "BPMFVS"
         "BrailleSputnik"
         "LexiconAssembly"
@@ -198,7 +202,7 @@ let package = Package(
     // D512 rerank: OS-neutral encoding/fusion; inference is the macOS-only `D512RerankONNX`.
     Target.target(name: "D512Rerank")
     #if os(macOS)
-      // onnxruntime for `D512RerankONNX` (dev/eval only, not part of the `Vanguard` product), checked
+      // onnxruntime for `D512RerankONNX` (used only behind the macOS 14 runtime gate), checked
       // 2026-10-15: official ORT 1.30.0 pod archive (download.onnxruntime.ai, Last-Modified 2026-09-10;
       // github.com/microsoft/onnxruntime release v1.30.0). Not the official SwiftPM package
       // github.com/microsoft/onnxruntime-swift-package-manager: its newest tag 1.24.2 (b7fb7f7d,
@@ -208,8 +212,9 @@ let package = Package(
       // equivalence bar against the Python harness (onnxruntime 1.31.0; max diff 1.18e-4); 1.30.0
       // matches it bit for bit. The archive's static library (ORT 1.30.0) is built with minos 14.0, so
       // `D512RerankONNX`'s public types and `D512Score` are `@available(macOS 14, *)` / `#available`-gated
-      // (the package floor stays macOS 12 for the shipped `Vanguard` product, which does not link ORT). Declared only
-      // on macOS so Linux/Windows never resolve or download it.
+      // (the package floor stays macOS 12). Declared only
+      // on macOS so Linux/Windows never resolve or download it. Vanguard now includes the scorer;
+      // D512SentenceRerank gates all ORT entry points at macOS 14 without raising the app floor.
       Target.binaryTarget(
         name: "onnxruntime",
         url: "https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.30.0.zip",
@@ -330,6 +335,7 @@ let package = Package(
     Target.testTarget(
       name: "LibVanguardTests",
       dependencies: buildTargetDependencies {
+        "D512Rerank"
         "LibVanguard"
         "LexiconAssembly"
         "LXAssemblyMaterials4Tests"

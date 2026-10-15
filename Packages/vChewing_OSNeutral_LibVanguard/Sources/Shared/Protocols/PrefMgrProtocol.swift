@@ -55,6 +55,10 @@ public protocol PrefMgrProtocol {
   var reducePOMLifetimeToNoMoreThan12Hours: Bool { get set }
   var useFixedCandidateOrderOnSelection: Bool { get set }
   var usePersonalCandidatePreference: Bool { get set }
+  var useD512SentenceRerank: Bool { get set }
+  var d512RerankWeight: Double { get set }
+  var d512RerankMargin: Double { get set }
+  var d512RerankPersonalBonus: Double { get set }
   var autoCorrectReadingCombination: Bool { get set }
   var readingNarrationCoverage: Int { get set }
   var alsoConfirmAssociatedCandidatesByEnter: Bool { get set }

@@ -178,6 +178,20 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
     didSet { didAskForSyncingLMPrefs?() }
   }
 
+  @AppProperty(userDef: .kUseD512SentenceRerank)
+  public var useD512SentenceRerank: Bool {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
+  @AppProperty(userDef: .kD512RerankWeight)
+  public var d512RerankWeight: Double
+
+  @AppProperty(userDef: .kD512RerankMargin)
+  public var d512RerankMargin: Double
+
+  @AppProperty(userDef: .kD512RerankPersonalBonus)
+  public var d512RerankPersonalBonus: Double
+
   @AppProperty(userDef: .kEnforceETenDOSCandidateSequence)
   public var enforceETenDOSCandidateSequence: Bool
 

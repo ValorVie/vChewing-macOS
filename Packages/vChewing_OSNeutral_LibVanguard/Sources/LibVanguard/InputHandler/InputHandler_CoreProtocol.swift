@@ -52,6 +52,9 @@ public protocol InputHandlerProtocol: AnyObject {
   var assembler: Homa.Assembler { get set } // 組字器
   var candidateSelectionLearning: CandidateSelectionLearning { get }
   var personalCandidatePreference: PersonalCandidatePreference { get }
+  #if compiler(>=6.4)
+    var d512SentenceRerank: D512SentenceRerank { get }
+  #endif
 }
 
 // MARK: - InputHandlerProtocol 便利存取器

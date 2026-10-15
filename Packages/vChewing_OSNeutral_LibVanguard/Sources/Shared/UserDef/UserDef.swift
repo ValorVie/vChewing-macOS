@@ -88,6 +88,10 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kFetchSuggestionsFromPerceptionOverrideModel = "FetchSuggestionsFromPerceptionOverrideModel"
   case kUseFixedCandidateOrderOnSelection = "UseFixedCandidateOrderOnSelection"
   case kUsePersonalCandidatePreference = "UsePersonalCandidatePreference"
+  case kUseD512SentenceRerank = "UseD512SentenceRerank"
+  case kD512RerankWeight = "D512RerankWeight"
+  case kD512RerankMargin = "D512RerankMargin"
+  case kD512RerankPersonalBonus = "D512RerankPersonalBonus"
   case kAutoCorrectReadingCombination = "AutoCorrectReadingCombination"
   case kReadingNarrationCoverage = "ReadingNarrationCoverage"
   case kAlsoConfirmAssociatedCandidatesByEnter = "AlsoConfirmAssociatedCandidatesByEnter"
@@ -723,6 +727,9 @@ extension UserDef {
     case .kFetchSuggestionsFromPerceptionOverrideModel: return .bool(true)
     case .kUseFixedCandidateOrderOnSelection: return .bool(false)
     case .kUsePersonalCandidatePreference: return .bool(true)
+    case .kUseD512SentenceRerank: return .bool(false)
+    case .kD512RerankWeight, .kD512RerankMargin: return .double(0.5)
+    case .kD512RerankPersonalBonus: return .double(2)
     case .kAutoCorrectReadingCombination: return .bool(true)
     case .kReadingNarrationCoverage: return .integer(0)
     case .kAlsoConfirmAssociatedCandidatesByEnter: return .bool(false)
@@ -1178,6 +1185,11 @@ extension UserDef {
       userDef: self, shortTitle: "i18n:UserDef.kUsePersonalCandidatePreference.shortTitle",
       description: "i18n:UserDef.kUsePersonalCandidatePreference.description"
     )
+    case .kUseD512SentenceRerank: return .init(
+      userDef: self, shortTitle: "i18n:UserDef.kUseD512SentenceRerank.shortTitle",
+      description: "i18n:UserDef.kUseD512SentenceRerank.description"
+    )
+    case .kD512RerankWeight, .kD512RerankMargin, .kD512RerankPersonalBonus: return nil
     case .kAutoCorrectReadingCombination: return .init(
         userDef: self,
         shortTitle: "i18n:UserDef.kAutoCorrectReadingCombination.shortTitle",

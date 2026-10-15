@@ -77,6 +77,9 @@ public final class InputHandler: InputHandlerProtocol {
   public var assembler: Assembler // 組字器
   public let candidateSelectionLearning = CandidateSelectionLearning()
   public let personalCandidatePreference = PersonalCandidatePreference()
+  #if compiler(>=6.4)
+    public var d512SentenceRerank = D512SentenceRerank()
+  #endif
 
   public var currentLM: LXAssembly.LXFacade {
     didSet {
