@@ -71,6 +71,9 @@ let package = Package(
       }
     )
     Product.executable(name: "D512Dump", targets: ["D512Dump"])
+    #if os(macOS)
+      Product.executable(name: "D512Score", targets: ["D512Score"])
+    #endif
   },
   dependencies: buildPackageDependencies {
     .package(path: "Deps/VanguardSwiftExtension")
@@ -192,6 +195,40 @@ let package = Package(
       name: "D512Dump",
       dependencies: ["Homa", "TrieKit", "Tekkon"]
     )
+    // D512 rerank: OS-neutral encoding/fusion; inference is the macOS-only `D512RerankONNX`.
+    Target.target(name: "D512Rerank")
+    #if os(macOS)
+      // onnxruntime for `D512RerankONNX` (dev/eval only, not part of the `Vanguard` product), checked
+      // 2026-10-15: official ORT 1.30.0 pod archive (download.onnxruntime.ai, Last-Modified 2026-09-10;
+      // github.com/microsoft/onnxruntime release v1.30.0). Not the official SwiftPM package
+      // github.com/microsoft/onnxruntime-swift-package-manager: its newest tag 1.24.2 (b7fb7f7d,
+      // 2026-02-25) declares `platforms: [.iOS(.v15), .macOS(.v14)]`, which SwiftPM rejects against this
+      // package's macOS 12 floor ("requires minimum platform version 14.0 for the macOS platform, but
+      // this target supports 12.0"). 1.24.2 (its archive, checksum f7100a99…) also missed the 1e-4
+      // equivalence bar against the Python harness (onnxruntime 1.31.0; max diff 1.18e-4); 1.30.0
+      // matches it bit for bit. The archive's static library (ORT 1.30.0) is built with minos 14.0, so
+      // `D512RerankONNX`'s public types and `D512Score` are `@available(macOS 14, *)` / `#available`-gated
+      // (the package floor stays macOS 12 for the shipped `Vanguard` product, which does not link ORT). Declared only
+      // on macOS so Linux/Windows never resolve or download it.
+      Target.binaryTarget(
+        name: "onnxruntime",
+        url: "https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.30.0.zip",
+        checksum: "e6f1670c14406fd9f082bb400ab197a9b0a9646058ca6366e440642e2b54a2ea"
+      )
+      Target.target(name: "CD512ONNXRuntime", dependencies: ["onnxruntime"])
+      Target.target(
+        name: "D512RerankONNX",
+        dependencies: ["D512Rerank", "CD512ONNXRuntime"],
+        linkerSettings: buildLinkerSettings {
+          // The ORT static archive pulls in CoreML (its EP), Network and libc++.
+          LinkerSetting.linkedFramework("Foundation")
+          LinkerSetting.linkedFramework("CoreML")
+          LinkerSetting.linkedFramework("Network")
+          LinkerSetting.linkedLibrary("c++")
+        }
+      )
+      Target.executableTarget(name: "D512Score", dependencies: ["D512Rerank", "D512RerankONNX"])
+    #endif
     Target.executableTarget(
       name: "vChewingSharedCLI",
       dependencies: buildTargetDependencies {
@@ -205,6 +242,16 @@ let package = Package(
     // MARK: - Test Targets
 
     Target.testTarget(name: "D512DumpTests", dependencies: ["D512Dump", "Homa", "TrieKit", "LexiconAssembly"])
+    Target.testTarget(name: "D512RerankTests", dependencies: ["D512Rerank"])
+    #if os(macOS)
+      Target.testTarget(
+        name: "D512RerankONNXTests",
+        dependencies: ["D512Rerank", "D512RerankONNX", "D512Score"], // D512Score: exit-code test runs the binary
+        resources: buildResources {
+          Resource.copy("Resources/held-out-fixture.json")
+        }
+      )
+    #endif
     Target.testTarget(
       name: "BPMFVSTests",
       dependencies: buildTargetDependencies {
