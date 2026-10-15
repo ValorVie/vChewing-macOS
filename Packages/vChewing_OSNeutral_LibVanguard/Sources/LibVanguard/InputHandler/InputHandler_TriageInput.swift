@@ -13,8 +13,23 @@ extension InputHandlerProtocol {
     guard let session = session else { return false }
     #if compiler(>=6.4)
       let rerank = d512SentenceRerank
-      if input.isTab, input.commonKeyModifierFlags.isEmpty, !hasFuriousFrontPending,
-         rerank.acceptSuggestion(self) { return true }
+      let isD512AcceptanceKey: Bool
+      if prefs.useD512SentenceRerank, prefs.d512RerankMode == 1, session.state.type == .ofInputting {
+        switch prefs.d512SuggestionAcceptKey {
+        case 0:
+          isD512AcceptanceKey = input.isTab && input.commonKeyModifierFlags.isEmpty && !hasFuriousFrontPending
+        case 1:
+          isD512AcceptanceKey = input.isTab && input.commonKeyModifierFlags == [.control]
+        case 2:
+          let forwardKey: KeyCode = session.isVerticalTyping ? .kDownArrow : .kRightArrow
+          isD512AcceptanceKey = input.keyCode == forwardKey.rawValue
+            && input.commonKeyModifierFlags.isEmpty && assembler.cursor == assembler.length
+        default: isD512AcceptanceKey = false
+        }
+      } else {
+        isD512AcceptanceKey = false
+      }
+      if isD512AcceptanceKey, rerank.acceptSuggestion(self) { return true }
       rerank.invalidate()
       let withdrewD512Pin = rerank.hasPin || rerank.keyCommitSnapshot != nil
       if rerank.hasPin {
@@ -35,6 +50,11 @@ extension InputHandlerProtocol {
             scheduleD512Rerank()
           }
         }
+      }
+      // 專用接受 Tab 在沒有建議或接受失敗時仍消費；方向鍵沿用句尾提示音。
+      if isD512AcceptanceKey, input.isTab {
+        errorCallback?("D512A026")
+        return true
       }
     #endif
     var state: State { session.state }

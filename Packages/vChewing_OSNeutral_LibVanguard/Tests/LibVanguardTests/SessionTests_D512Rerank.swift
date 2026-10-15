@@ -442,9 +442,11 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(row["applied"] as? Bool == false)
   }
 
-  @Test("SS-D512-A25-S2 Tab accepts changed nodes as manual selections", arguments: [2, 4])
-  func test_SS_D512_A25_S2_Accept(_ readings: Int) async throws {
+  @Test("SS-D512-A25-S2 The configured key accepts changed nodes as manual selections",
+        arguments: [2, 4], [0, 1, 2])
+  func test_SS_D512_A25_S2_Accept(_ readings: Int, _ acceptKey: Int) async throws {
     let url = prepareD512SuggestFixture()
+    testHandler.prefs.d512SuggestionAcceptKey = acceptKey
     typeSentenceOrCandidates(readings == 2 ? "g4g4" : "g4g4g4g4")
     await waitForD512()
     let before = testHandler.assembler.assembledSentence
@@ -460,7 +462,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     let winner = readings == 2 ? "世事" : "試試世事"
     let start = readings - 2
     testHandler.furiousTrail = ["shi"]
-    press(.tabEvent)
+    press(d512AcceptEvent(acceptKey))
     #expect(testHandler.furiousTrail.isEmpty)
     #expect(testSession.state.displayedText == winner)
     #expect(!testStatusUI.isShown)
@@ -514,18 +516,21 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(row["accepted"] as? Bool == false)
   }
 
-  @Test("SS-D512-A25-S4 Tab without a suggestion keeps candidate revolution", arguments: [0, 1])
-  func test_SS_D512_A25_S4_Revolve(_ mode: Int) async throws {
+  @Test("SS-D512-A25-S4 Tab without a suggestion follows the selected acceptance key",
+        arguments: [0, 1], [0, 1, 2])
+  func test_SS_D512_A25_S4_Revolve(_ mode: Int, _ acceptKey: Int) async throws {
     let url = prepareD512SuggestFixture(mode: mode)
+    testHandler.prefs.d512SuggestionAcceptKey = acceptKey
     #expect(UserDef(rawValue: "D512RerankMode")?.intDefaultValue == 0)
     testHandler.prefs.d512RerankMargin = 100
     typeSentenceOrCandidates("g4g4")
     await waitForD512()
     #expect(testSession.state.displayedText == "試試")
     press(.tabEvent)
-    #expect(testSession.state.displayedText == "逝世")
+    let expected = mode == 1 && acceptKey == 0 ? "試試" : "逝世"
+    #expect(testSession.state.displayedText == expected)
     press(.dataEnterReturn)
-    #expect(testClientProxy.committedText == "逝世")
+    #expect(testClientProxy.committedText == expected)
     let row = try #require(d512CalibrationRows(url).last)
     #expect(row["mode"] as? String == (mode == 0 ? "automatic" : "suggest"))
     #expect(row["accepted"] is NSNull || (mode == 1 && row["accepted"] as? Bool == false))
@@ -708,6 +713,143 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     let row = try #require(d512CalibrationRows(url).last)
     #expect(row["phase"] as? String == "commit")
     #expect(row["accepted"] as? Bool == true)
+  }
+
+  @Test("SS-D512-A26-K1 Dedicated Tab preserves composition; Shift and candidate Tab keep their behavior",
+        arguments: ["none", "failed", "shift", "candidates"])
+  func test_SS_D512_A26_K1_Tab(_ action: String) async throws {
+    _ = prepareD512SuggestFixture()
+    if action != "failed" { testHandler.prefs.d512RerankMargin = 100 }
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    if action == "failed" {
+      _ = try #require(testHandler.d512SentenceRerank.pendingSuggestion)
+      try protectD512DefaultForFailedAcceptance()
+    }
+    let mirror = testHandler.assembler.createNodeOverrideStatusMirror()
+    let cursor = testHandler.assembler.cursor
+    if action == "candidates" {
+      press(.dataArrowDown)
+      #expect(testSession.state.type == .ofCandidates)
+      syncCandidateControllerCount()
+      press(.tabEvent)
+      #expect(testSession.state.type == .ofCandidates)
+      #expect(testSession.state.displayedText == "逝世")
+    } else if action == "shift" {
+      try testHandler.assembler.overrideCandidate(
+        .init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "世事"), atSegment: 0, segLength: 2,
+        isExplicitlyOverridden: true, perceptionHandler: { _ in }
+      )
+      testSession.switchState(testHandler.generateStateOfInputting())
+      var tab = KBEvent.KeyEventData.tabEvent
+      tab.flags = [.shift]
+      press(tab)
+      #expect(testSession.state.displayedText == "逝世")
+    } else {
+      press(.tabEvent)
+      #expect(testSession.state.displayedText == "試試")
+      #expect(testHandler.assembler.cursor == cursor)
+      #expect(testHandler.assembler.createNodeOverrideStatusMirror() == mirror)
+      #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+      #expect(testHandler.d512SentenceRerank.lastCalibrationRecord?.accepted == false)
+    }
+    #expect(testClientProxy.committedText.isEmpty)
+  }
+
+  @Test("SS-D512-A26-K2 Ctrl Tab is dedicated; plain and modified Tab keep their behavior",
+        arguments: ["none", "failed", "plain", "modified"])
+  func test_SS_D512_A26_K2_ControlTab(_ action: String) async throws {
+    _ = prepareD512SuggestFixture()
+    testHandler.prefs.d512SuggestionAcceptKey = 1
+    if action == "none" { testHandler.prefs.d512RerankMargin = 100 }
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    if action == "failed" { try protectD512DefaultForFailedAcceptance() }
+    let mirror = testHandler.assembler.createNodeOverrideStatusMirror()
+    let cursor = testHandler.assembler.cursor
+    var tab = d512AcceptEvent(1)
+    if action == "plain" { tab.flags = [] }
+    if action == "modified" { tab.flags = [.control, .option] }
+    press(tab)
+    #expect(testSession.state.displayedText == (action == "plain" || action == "modified" ? "逝世" : "試試"))
+    #expect(testClientProxy.committedText.isEmpty)
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    #expect(testHandler.d512SentenceRerank.lastCalibrationRecord?.accepted == false)
+    if action == "none" || action == "failed" {
+      #expect(testHandler.assembler.cursor == cursor)
+      #expect(testHandler.assembler.createNodeOverrideStatusMirror() == mirror)
+      #expect(testHandler.candidateSelectionLearning.protectedRanges(assembler: testHandler.assembler).isEmpty == (action == "none"))
+    }
+  }
+
+  @Test("SS-D512-A26-K3 Forward accepts only at the sentence end in either orientation",
+        arguments: [false, true], ["suggestion", "middle", "none"])
+  func test_SS_D512_A26_K3_Forward(_ vertical: Bool, _ action: String) async throws {
+    let url = prepareD512SuggestFixture()
+    testHandler.prefs.d512SuggestionAcceptKey = 2
+    testClientProxy.textOrientation = vertical ? 0 : 1
+    testSession.updateVerticalTypingStatus()
+    if action == "none" { testHandler.prefs.d512RerankMargin = 100 }
+    typeSentenceOrCandidates("g4g4")
+    if action == "middle" {
+      testHandler.assembler.cursor = 1
+      testSession.switchState(testHandler.generateStateOfInputting())
+    }
+    await waitForD512()
+    #expect((testHandler.d512SentenceRerank.pendingSuggestion != nil) == (action != "none"))
+    let pair = Homa.CandidatePair(keyArray: ["ㄕˋ", "ㄕˋ"], value: "世事")
+    let store = testHandler.currentLM.candidateRanking
+    let count = store.count(for: pair)
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    let errors = recordedErrors.count
+    press(d512AcceptEvent(2, vertical: vertical))
+    let expected = action == "suggestion" ? "世事" : "試試"
+    #expect(testSession.state.displayedText == expected)
+    #expect(testHandler.assembler.cursor == 2)
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(store.count(for: pair) == count)
+    #expect(pomSaves == 0)
+    if action == "none" {
+      #expect(recordedErrors.count == errors + 1)
+      #expect(recordedErrors.last == "A96AAD58")
+    }
+    if action == "middle" {
+      #expect(testHandler.candidateSelectionLearning.protectedRanges(assembler: testHandler.assembler).isEmpty)
+    }
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == expected)
+    #expect(store.count(for: pair) == count + (action == "suggestion" ? 1 : 0))
+    #expect(try d512CalibrationRows(url).last?["accepted"] as? Bool == (action == "suggestion"))
+  }
+
+  @Test("SS-D512-A26-K4 Automatic and disabled reranking preserve Tab revolution",
+        arguments: [0, 1, 2], [true, false])
+  func test_SS_D512_A26_K4_Automatic(_ acceptKey: Int, _ enabled: Bool) async throws {
+    _ = prepareD512SuggestFixture(mode: enabled ? 0 : 1)
+    testHandler.prefs.d512SuggestionAcceptKey = acceptKey
+    testHandler.prefs.d512RerankMargin = 100
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    testHandler.prefs.useD512SentenceRerank = enabled
+    press(.tabEvent)
+    #expect(testSession.state.displayedText == "逝世")
+    #expect(testClientProxy.committedText.isEmpty)
+  }
+
+  private func d512AcceptEvent(_ acceptKey: Int, vertical: Bool = false) -> KBEvent.KeyEventData {
+    if acceptKey == 2 { return vertical ? .dataArrowDown : .dataArrowRight }
+    var tab = KBEvent.KeyEventData.tabEvent
+    if acceptKey == 1 { tab.flags = [.control] }
+    return tab
+  }
+
+  private func protectD512DefaultForFailedAcceptance() throws {
+    try testHandler.assembler.overrideCandidate(
+      .init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "試試"), atSegment: 0, segLength: 2,
+      isExplicitlyOverridden: true, perceptionHandler: { _ in }
+    )
   }
 
   private func prepareD512SuggestFixture(mode: Int = 1) -> URL {

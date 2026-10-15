@@ -31,6 +31,7 @@ final class MockClientProxy: NSObject, SessionClientProxy {
   /// 行高量測回呼；未設定時一律回報零矩形（既有行為）。
   /// 供需要依座標辨識錨點的測試提供可辨識之矩形。
   var lineHeightRectProvider: ((_ u16CursorPos: UInt) -> CGRect)?
+  var textOrientation: Int?
 
   func toString() -> String { committedText }
 
@@ -66,7 +67,7 @@ final class MockClientProxy: NSObject, SessionClientProxy {
   func clientAttributesForCharacterIndex(
     atU16Pos _: UInt, lineHeightRectangle _: UnsafeMutablePointer<CGRect>
   )
-    -> [AnyHashable: Any]? { nil }
+    -> [AnyHashable: Any]? { textOrientation.map { ["IMKTextOrientation": NSNumber(value: $0)] } }
 
   func clientLineHeightRect(forU16CursorPos u16CursorPos: UInt) -> CGRect {
     queriedU16CursorPositions.append(u16CursorPos)
