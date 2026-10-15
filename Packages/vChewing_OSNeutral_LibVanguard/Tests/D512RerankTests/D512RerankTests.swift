@@ -139,4 +139,40 @@ struct D512RerankTests {
     #expect(D512Fusion.choose(engine: [-1, -1], model: [0, 0], default: 1, weight: 1, margin: -1) == 0)
     #expect(D512Fusion.choose(engine: engine, model: nil, default: 0, weight: 8, margin: 0) == 0)
   }
+
+  @Test func personalBonusCanKeepTheDisplayedDefault() {
+    let engine = [-3.0, -2.0, -4.0], model = [-2.0, 0.0, -1.0]
+    #expect(D512Fusion.choose(engine: engine, model: model, default: 0, weight: 0.5, margin: 0.5) == 1)
+    #expect(D512Fusion.choose(
+      engine: engine, model: model, default: 0, weight: 0.5, margin: 0.5,
+      personalHits: [2, 0, 0], bonus: 2
+    ) == 0)
+    #expect(D512Fusion.scores(
+      engine: engine, model: model, weight: 0.5, personalHits: [2, 0, 1], bonus: 2
+    ) == [0, -2, -2.5])
+  }
+
+  @Test func appendedDefaultUsesTheSameFormulaAndStrictMargin() {
+    #expect(D512Fusion.choose(
+      engine: [-1, -2, -3], model: [0, 0, 0], default: 2, weight: 0.5, margin: 0,
+      personalHits: [0, 0, 1], bonus: 2
+    ) == 2)
+    #expect(D512Fusion.choose(
+      engine: [-0.5, -2, -3], model: [0, 0, 0], default: 2, weight: 0.5, margin: 0.5,
+      personalHits: [0, 0, 1], bonus: 2
+    ) == 2)
+  }
+
+  @Test func invalidPersonalBonusFallsBackForTheWholeRequest() {
+    for hits in [[1], [-1, 0]] {
+      #expect(D512Fusion.choose(
+        engine: [0, 1], model: [0, 0], default: 0, weight: 0.5, margin: 0,
+        personalHits: hits, bonus: 2
+      ) == 0)
+    }
+    #expect(D512Fusion.choose(
+      engine: [0, 1], model: [0, 0], default: 0, weight: 0.5, margin: 0,
+      personalHits: [1, 0], bonus: .nan
+    ) == 0)
+  }
 }

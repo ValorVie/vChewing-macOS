@@ -156,7 +156,10 @@ public struct D512Vocab: Sendable {
   /// Fused pick for one request. Any scoring error (fallback-worthy model output, inference failure)
   /// keeps the engine default for the whole request and is returned alongside, never swallowed.
   /// `choice` is nil only for an invalid request (no candidates / default out of range).
-  public func rerank(_ req: D512Request, scorer: some D512Scoring, weight: Double, margin: Double)
+  public func rerank(
+    _ req: D512Request, scorer: some D512Scoring, weight: Double, margin: Double,
+    personalHits: [Int]? = nil, bonus: Double = 0
+  )
     -> (choice: Int?, error: (any Error)?) {
     guard req.candidates.indices.contains(req.engineDefault) else {
       return (nil, D512RerankError.invalidRequest(requestID: req.id))
@@ -164,7 +167,10 @@ public struct D512Vocab: Sendable {
     do {
       let model = try modelScores(req, scorer: scorer)
       let engine = req.candidates.map(\.log_score)
-      return (D512Fusion.choose(engine: engine, model: model, default: req.engineDefault, weight: weight, margin: margin), nil)
+      return (D512Fusion.choose(
+        engine: engine, model: model, default: req.engineDefault, weight: weight, margin: margin,
+        personalHits: personalHits, bonus: bonus
+      ), nil)
     } catch {
       return (req.engineDefault, error)
     }
@@ -213,14 +219,29 @@ public struct D512Vocab: Sendable {
 // MARK: - D512Fusion
 
 public enum D512Fusion {
-  /// `fused = engine + w × model`; a non-default candidate wins only by a strict margin `> τ`.
+  /// `fused = raw + w × model + b × personalHits`; nil means the whole request must fall back.
+  public static func scores(
+    engine: [Double], model: [Double]?, weight w: Double, personalHits: [Int]? = nil, bonus b: Double = 0
+  ) -> [Double]? {
+    guard let model, model.count == engine.count, w.isFinite, b.isFinite else { return nil }
+    let hits = personalHits ?? [Int](repeating: 0, count: engine.count)
+    guard hits.count == engine.count, hits.allSatisfy({ $0 >= 0 }),
+          engine.allSatisfy(\.isFinite), model.allSatisfy(\.isFinite) else { return nil }
+    let fused = engine.indices.map { engine[$0] + w * model[$0] + b * Double(hits[$0]) }
+    return fused.allSatisfy(\.isFinite) ? fused : nil
+  }
+
+  /// A non-default candidate wins only by a strict margin `> τ`.
   /// Ties on the max pick the lowest index, as Python's `max`. `model == nil`, mismatched lengths,
   /// an out-of-range default or any non-finite fused score keep the default.
-  public static func choose(engine: [Double], model: [Double]?, default d: Int, weight w: Double, margin tau: Double)
+  public static func choose(
+    engine: [Double], model: [Double]?, default d: Int, weight w: Double, margin tau: Double,
+    personalHits: [Int]? = nil, bonus b: Double = 0
+  )
     -> Int {
-    guard let model, model.count == engine.count, engine.indices.contains(d) else { return d }
-    let fused = zip(engine, model).map { $0 + w * $1 }
-    guard fused.allSatisfy(\.isFinite) else { return d }
+    guard engine.indices.contains(d), tau.isFinite,
+          let fused = scores(engine: engine, model: model, weight: w, personalHits: personalHits, bonus: b)
+    else { return d }
     var best = 0
     for i in fused.indices where fused[i] > fused[best] { best = i }
     return best != d && fused[best] - fused[d] > tau ? best : d
