@@ -193,6 +193,11 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
     didSet { didAskForSyncingLMPrefs?() }
   }
 
+  @AppProperty(userDef: .kD512SuggestionAcceptKey)
+  public var d512SuggestionAcceptKey: Int {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
   @AppProperty(userDef: .kD512RerankWeight)
   public var d512RerankWeight: Double
 

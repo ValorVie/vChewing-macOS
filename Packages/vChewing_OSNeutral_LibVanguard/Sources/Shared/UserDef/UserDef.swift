@@ -90,6 +90,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kUsePersonalCandidatePreference = "UsePersonalCandidatePreference"
   case kUseD512SentenceRerank = "UseD512SentenceRerank"
   case kD512RerankMode = "D512RerankMode"
+  case kD512SuggestionAcceptKey = "D512SuggestionAcceptKey"
   case kLogD512Calibration = "LogD512Calibration"
   case kD512RerankWeight = "D512RerankWeight"
   case kD512RerankMargin = "D512RerankMargin"
@@ -731,6 +732,7 @@ extension UserDef {
     case .kUsePersonalCandidatePreference: return .bool(true)
     case .kUseD512SentenceRerank: return .bool(false)
     case .kD512RerankMode: return .integer(0)
+    case .kD512SuggestionAcceptKey: return .integer(0)
     case .kLogD512Calibration: return .bool(false)
     case .kD512RerankWeight, .kD512RerankMargin: return .double(0.5)
     case .kD512RerankPersonalBonus: return .double(2)
@@ -1203,6 +1205,15 @@ extension UserDef {
       options: [
         0: "i18n:UserDef.kD512RerankMode.option.0",
         1: "i18n:UserDef.kD512RerankMode.option.1",
+      ]
+    )
+    case .kD512SuggestionAcceptKey: return .init(
+      userDef: self, shortTitle: "i18n:UserDef.kD512SuggestionAcceptKey.shortTitle",
+      description: "i18n:UserDef.kD512SuggestionAcceptKey.description",
+      options: [
+        0: "i18n:UserDef.kD512SuggestionAcceptKey.option.0",
+        1: "i18n:UserDef.kD512SuggestionAcceptKey.option.1",
+        2: "i18n:UserDef.kD512SuggestionAcceptKey.option.2",
       ]
     )
     case .kD512RerankWeight, .kD512RerankMargin, .kD512RerankPersonalBonus: return nil

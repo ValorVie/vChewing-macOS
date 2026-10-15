@@ -25,6 +25,18 @@ final class UserDefExchangeTests {
   // MARK: Internal
 
   @Test
+  func testD512SuggestionAcceptKeyDefaultsToTab() throws {
+    let key = try #require(UserDef(rawValue: "D512SuggestionAcceptKey"))
+    #expect(key.intDefaultValue == 0)
+    let prefs = PrefMgr()
+    #expect(prefs.d512SuggestionAcceptKey == 0)
+    prefs.d512SuggestionAcceptKey = 2
+    #expect(UserDefaults.current.integer(forKey: key.rawValue) == 2)
+    #expect(prefs.d512RerankMode == 0)
+    #expect(!prefs.useD512SentenceRerank)
+  }
+
+  @Test
   func testD512ModeDefaultsToAutomatic() throws {
     let key = try #require(UserDef(rawValue: "D512RerankMode"))
     #expect(key.intDefaultValue == 0)
