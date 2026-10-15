@@ -560,6 +560,98 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     #expect(row["accepted"] as? Bool == false)
   }
 
+  @Test("SS-D512-A25-R1-001 Accepted words replace overlapping POM pins and learn on commit",
+        arguments: [true, false], [true, false])
+  func test_SS_D512_A25_R1_001_MergeAcrossPOMPins(_ moveFirst: Bool, _ observePOM: Bool) async throws {
+    let url = prepareD512SuggestFixture()
+    typeSentenceOrCandidates("g4g4")
+    let assembler = testHandler.assembler
+    for position in 0 ..< 2 {
+      try assembler.overrideCandidate(
+        .init(keyArray: ["ㄕˋ"], value: "試"), at: position, type: .withSpecified,
+        isExplicitlyOverridden: false
+      )
+    }
+    assembler.assemble()
+    #expect(assembler.assembledSentence.map(\.value) == ["試", "試"])
+    testSession.switchState(testHandler.generateStateOfInputting())
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = observePOM
+    await waitForD512()
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion?.text == "世事")
+    let pair = Homa.CandidatePair(keyArray: ["ㄕˋ", "ㄕˋ"], value: "世事")
+    let store = testHandler.currentLM.candidateRanking
+    let count = store.count(for: pair)
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    press(.tabEvent)
+    #expect(testSession.state.displayedText == "世事")
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(pomSaves == (observePOM ? 1 : 0))
+    if moveFirst { press(.dataArrowHome) }
+    #expect(testSession.state.displayedText == "世事")
+    #expect(assembler.assembledSentence.map(\.value) == ["世事"])
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "世事")
+    #expect(store.count(for: pair) == count + 1)
+    #expect(pomSaves == (observePOM ? 1 : 0))
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["phase"] as? String == "commit")
+    #expect(row["accepted"] as? Bool == true)
+  }
+
+  @Test("SS-D512-A25-R1-002 Split suggestions accept atomically", arguments: [false, true])
+  func test_SS_D512_A25_R1_002_SplitChanges(_ missingTail: Bool) async throws {
+    let url = prepareD512SuggestFixture()
+    testHandler.prefs.d512RerankWeight = 3
+    let assembler = Homa.Assembler(gramQuerier: { query in
+      let keys = query.map(\.first)
+      if keys.count == 2 { return [.init(keyArray: keys, current: "試試", probability: -1)] }
+      guard keys.count == 1 else { return [] }
+      return [Homa.Gram(keyArray: keys, current: "試", probability: -4),
+              .init(keyArray: keys, current: "世", probability: -5),
+              .init(keyArray: keys, current: "事", probability: -6)]
+    })
+    try assembler.insertKeys([.singleKey("ㄕˋ"), .singleKey("ㄕˋ")])
+    testHandler.assembler = assembler
+    testSession.switchState(testHandler.generateStateOfInputting())
+    await waitForD512()
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion?.changes.map { $0.gram.value } == ["世", "事"])
+    testHandler.prefs.fetchSuggestionsFromPerceptionOverrideModel = true
+    var pomSaves = 0
+    testHandler.pomSaveCallback = { pomSaves += 1 }
+    let pairs = ["世", "事"].map { Homa.CandidatePair(keyArray: ["ㄕˋ"], value: $0) }
+    let store = testHandler.currentLM.candidateRanking
+    let counts = pairs.map { store.count(for: $0) }
+    if missingTail {
+      // 同鍵圖中缺少第二個勝者節點，第一個試套也必須還原，不能留下部分接受。
+      var config = assembler.config
+      config.segments[1].removeValue(forKey: 1)
+      let incomplete = Homa.Assembler(gramQuerier: { _ in [] }, config: config)
+      testHandler.assembler = incomplete
+      let original = incomplete.createNodeOverrideStatusMirror()
+      #expect(!testHandler.d512SentenceRerank.acceptSuggestion(testHandler))
+      #expect(incomplete.createNodeOverrideStatusMirror() == original)
+      #expect(incomplete.assembledSentence.map(\.value) == ["試試"])
+      #expect(!testHandler.d512SentenceRerank.hasPin)
+      #expect(testHandler.d512SentenceRerank.lastCalibrationRecord?.accepted == false)
+      #expect(testHandler.candidateSelectionLearning.protectedRanges(assembler: incomplete).isEmpty)
+      #expect(pomSaves == 0)
+      for (index, pair) in pairs.enumerated() { #expect(store.count(for: pair) == counts[index]) }
+      return
+    }
+    press(.tabEvent)
+    #expect(testSession.state.displayedText == "世事")
+    #expect(!testHandler.d512SentenceRerank.hasPin)
+    #expect(pomSaves == 2)
+    press(.dataArrowHome)
+    #expect(testSession.state.displayedText == "世事")
+    press(.dataEnterReturn)
+    #expect(testClientProxy.committedText == "世事")
+    for (index, pair) in pairs.enumerated() { #expect(store.count(for: pair) == counts[index] + 1) }
+    #expect(pomSaves == 2)
+    #expect(try d512CalibrationRows(url).last?["accepted"] as? Bool == true)
+  }
+
   private func prepareD512SuggestFixture(mode: Int = 1) -> URL {
     prepareD512Fixture()
     testUI.currentSessionID = testSession.id

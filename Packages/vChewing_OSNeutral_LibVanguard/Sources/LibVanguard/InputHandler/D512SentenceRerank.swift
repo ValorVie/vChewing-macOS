@@ -101,26 +101,31 @@
       handler.invalidateFuriousTrail()
       let assembler = handler.assembler
       let fixed = handler.candidateSelectionLearning.protectedRanges(assembler: assembler)
-      handler.personalCandidatePreference.withdraw(assembler: assembler)
-      guard apply(suggestion.grams, assembler: assembler, fixedRanges: fixed) else {
-        handler.applyPersonalCandidatePreference()
-        return false
+      let original = assembler.createNodeOverrideStatusMirror()
+      var accepted = false
+      defer {
+        if !accepted {
+          assembler.restoreFromNodeOverrideStatusMirror(original)
+          assembler.assemble()
+        }
       }
-      var mirror: [FIUUID: Homa.NodeOverrideStatus] = [:]
       for change in suggestion.changes {
         let range = change.start ..< change.start + change.gram.segLength
         guard !fixed.contains(where: { $0.overlaps(range) }),
-              let node = assembler.segments[change.start][change.gram.segLength] else { continue }
-        var status = node.overrideStatus
-        // 顯式接受取代模型 mirror；下一鍵撤 pin 時沿用 v1 的「已被手選改動則保留」。
-        status.isExplicitlyOverridden = true
-        mirror[node.id] = status
+              assembler.overrideCandidate(
+                change.gram.asCandidatePair, at: range.upperBound - 1, overrideType: .withSpecified,
+                isExplicitlyOverridden: true, perceptionHandler: { _ in }
+              ) else { return false }
       }
-      assembler.restoreFromNodeOverrideStatusMirror(mirror)
       assembler.assemble()
+      // 由 Homa 解除相交覆寫，不建立 D512 pin；整條路徑一致後才記手選與 POM。
+      let result = assembler.assembledSentence
+      guard result.count == suggestion.grams.count,
+            zip(result, suggestion.grams).allSatisfy({
+              $0.gram.id == $1.gram.id && $0.segLength == $1.segLength
+            }) else { return false }
+      accepted = true
       for change in suggestion.changes {
-        guard let node = assembler.segments[change.start][change.gram.segLength],
-              mirror[node.id] != nil else { continue }
         let pair = change.gram.asCandidatePair
         if handler.isPersonalCandidatePreferenceModeEligible, handler.isStandardRankingCandidate(pair) {
           handler.candidateSelectionLearning.record(
