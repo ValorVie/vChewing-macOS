@@ -72,6 +72,10 @@
               SettingsUIHost.shared.syncLMPrefs()
             }
             .disabled(d512UnavailableReason != nil)
+            UserDef.kD512RerankMode.renderUI {
+              SettingsUIHost.shared.syncLMPrefs()
+            }
+            .disabled(!useD512SentenceRerank)
             if let reason = d512UnavailableReason {
               Text(reason).font(.footnote).foregroundStyle(.secondary)
             }
@@ -121,6 +125,8 @@
     private var isShowingIMKEOSNotice = false
     #if compiler(>=6.4)
       @State private var d512UnavailableReason: String? = nil
+      @AppStorage(wrappedValue: false, UserDef.kUseD512SentenceRerank.rawValue)
+      private var useD512SentenceRerank: Bool
     #endif
 
     // MARK: - AppStorage Variables（僅保留需在 View 條件中讀取的屬性）

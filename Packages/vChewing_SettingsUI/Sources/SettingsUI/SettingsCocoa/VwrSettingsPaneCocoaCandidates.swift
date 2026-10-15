@@ -136,6 +136,11 @@ extension SettingsPanesCocoa {
               renderable.currentControl?.target = self
               renderable.currentControl?.action = #selector(self.personalCandidatePreferenceDidSet(_:))
             }
+            UserDef.kD512RerankMode.renderCocoa(
+              fixWidth: contentWidth, prefUITab: .tabCandidates
+            ) { renderable in
+              self.configureD512ModeControl(renderable.currentControl)
+            }
             if let reason = d512Reason {
               NSTextField(wrappingLabelWithString: reason)
             }
@@ -191,6 +196,17 @@ extension SettingsPanesCocoa {
     @IBAction
     func personalCandidatePreferenceDidSet(_: NSControl) {
       SettingsUIHost.shared.syncLMPrefs()
+    }
+
+    func configureD512ModeControl(
+      _ control: NSControl?, defaults: NSUserDefaultsController = .shared
+    ) {
+      control?.bind(
+        .enabled, to: defaults,
+        withKeyPath: "values.\(UserDef.kUseD512SentenceRerank.rawValue)"
+      )
+      control?.target = self
+      control?.action = #selector(personalCandidatePreferenceDidSet(_:))
     }
 
     @IBAction

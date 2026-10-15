@@ -637,3 +637,8 @@
 "i18n:D512.RequiresMacOS14" = "D512 requires macOS 14 or later.";
 "i18n:D512.ModelMissing" = "D512 is unavailable: model files are missing.";
 "i18n:D512.ModelInvalid" = "D512 is unavailable: model verification or vocabulary loading failed.";
+
+"i18n:UserDef.kD512RerankMode.shortTitle" = "D512 correction mode";
+"i18n:UserDef.kD512RerankMode.description" = "Automatically apply corrections, or show suggestions for Tab to accept. Accepting counts as a manual choice; other keys discard the suggestion.";
+"i18n:UserDef.kD512RerankMode.option.0" = "Automatic";
+"i18n:UserDef.kD512RerankMode.option.1" = "Suggest only (Tab to accept)";

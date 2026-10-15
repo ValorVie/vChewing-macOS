@@ -637,3 +637,8 @@
 "i18n:D512.RequiresMacOS14" = "D512 には macOS 14 以降が必要です。";
 "i18n:D512.ModelMissing" = "D512 は無効です：モデルファイルがありません。";
 "i18n:D512.ModelInvalid" = "D512 は無効です：モデルの検証または語彙表の読み込みに失敗しました。";
+
+"i18n:UserDef.kD512RerankMode.shortTitle" = "D512 校正モード";
+"i18n:UserDef.kD512RerankMode.description" = "自動で適用するか、Tab で採用する提案だけを表示します。採用は手動選択として学習され、他のキーで提案を破棄します。";
+"i18n:UserDef.kD512RerankMode.option.0" = "自動適用";
+"i18n:UserDef.kD512RerankMode.option.1" = "提案のみ（Tab で採用）";

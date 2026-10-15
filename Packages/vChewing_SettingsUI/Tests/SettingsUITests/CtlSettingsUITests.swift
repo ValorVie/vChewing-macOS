@@ -43,4 +43,18 @@ final class CtlSettingsUITests {
     // window 的 contentView 也應該已被移除。
     #expect(CtlSettingsUI.shared?.window?.contentView == nil)
   }
+
+  @Test("SS-D512-A25-S6 The mode control follows the master switch")
+  func testD512ModeRequiresMasterSwitch() throws {
+    _ = try #require(UserDef(rawValue: "D512RerankMode"))
+    let controller = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    let keyPath = "values.UseD512SentenceRerank"
+    controller.setValue(false, forKeyPath: keyPath)
+    let pane = SettingsPanesCocoa.Candidates()
+    let control = NSPopUpButton()
+    pane.configureD512ModeControl(control, defaults: controller)
+    #expect(!control.isEnabled)
+    controller.setValue(true, forKeyPath: keyPath)
+    #expect(control.isEnabled)
+  }
 }
