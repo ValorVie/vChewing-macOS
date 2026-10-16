@@ -83,7 +83,8 @@ struct D512RerankONNXTests {
 
   /// Runs the built `D512Score` on the fixture against a report whose expected scores are shifted by `bias`.
   private func scoreExitCode(
-    bias: Double, extraArgs: [String] = [], onlyFallbacks: Bool = false, stdout: FileHandle = .nullDevice
+    bias: Double, extraArgs: [String] = [], onlyFallbacks: Bool = false, stdout: FileHandle = .nullDevice,
+    checkNoTelemetryFiles: Bool = false
   ) throws -> Int32 {
     let cases = try Fixture.load().filter { !onlyFallbacks || $0.expected_model == nil }
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("d512-score-\(UUID().uuidString)")
@@ -113,10 +114,20 @@ struct D512RerankONNXTests {
       "--model-dir", modelDir.path, "--requests", dir.appendingPathComponent("r.jsonl").path,
       "--report", dir.appendingPathComponent("p.json").path,
     ] + extraArgs
+    if checkNoTelemetryFiles {
+      process.currentDirectoryURL = dir
+      var environment = ProcessInfo.processInfo.environment
+      environment["ORT_DISABLE_TELEMETRY"] = "0"
+      process.environment = environment
+    }
     process.standardOutput = stdout
     process.standardError = FileHandle.nullDevice
     try process.run()
     process.waitUntilExit()
+    if checkNoTelemetryFiles {
+      let files = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+      #expect(Set(files) == Set(["r.jsonl", "p.json"]), "ORT must not create telemetry storage: \(files)")
+    }
     return process.terminationStatus
   }
 
@@ -134,6 +145,12 @@ struct D512RerankONNXTests {
     let summary = try JSONSerialization.jsonObject(with: pipe.fileHandleForReading.readDataToEndOfFile()) as? [String: Any]
     #expect(summary?["compared_requests"] as? Int == 0)
     #expect((summary?["latency_ms_all"] as? [String: Any])?["median"] is NSNull)
+  }
+
+  @available(macOS 14, *)
+  @Test(.enabled(if: hasModel, "D512 model not present"))
+  func scoreToolCreatesNoTelemetryStorage() throws {
+    #expect(try scoreExitCode(bias: 0, checkNoTelemetryFiles: true) == 0)
   }
 
   @available(macOS 14, *)

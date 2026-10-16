@@ -5,6 +5,7 @@
 import CD512ONNXRuntime
 import CryptoKit
 import D512Rerank
+import Darwin
 import Foundation
 
 // onnxruntime source (checked 2026-10-15): official pod archive `pod-archive-onnxruntime-c-1.30.0.zip`
@@ -30,12 +31,18 @@ public final class D512ONNXScorer: D512Scoring {
     "vocab.json": "556dffaffbf4c05211a846dcee55ef735cea68c5754f9bffcc6f9588124172b3",
   ]
 
+  // Swift initializes this once, before any scorer calls ORT. Keep it off for the process lifetime.
+  private static let telemetryDisabled = setenv("ORT_DISABLE_TELEMETRY", "1", 1) == 0
+
   public let vocab: D512Vocab
 
   /// Verifies the pinned hashes (once per process per directory), loads the vocab, then the session.
   public init(modelDirectory: URL, intraOpThreads: Int32 = 2) throws {
     try Self.verifyFiles(modelDirectory)
     self.vocab = try D512Vocab(modelDirectory: modelDirectory)
+    // ORT 1.30 initializes 1DS storage inside CreateEnv; DisableTelemetryEvents alone is too late.
+    // https://github.com/microsoft/onnxruntime/blob/v1.30.0/docs/Privacy.md#disabling-telemetry
+    guard Self.telemetryDisabled else { throw Failure(description: "Cannot disable ONNX Runtime telemetry") }
     guard let api = OrtGetApiBase().pointee.GetApi(UInt32(ORT_API_VERSION)) else {
       throw Failure(description: "onnxruntime API version \(ORT_API_VERSION) unavailable")
     }
