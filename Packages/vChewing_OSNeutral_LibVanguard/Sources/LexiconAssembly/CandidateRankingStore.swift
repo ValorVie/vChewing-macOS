@@ -142,7 +142,7 @@ extension LXAssembly {
       var loading = false
       var writable = true
 
-      mutating func record(_ pair: Homa.CandidatePair, order: UInt64) {
+      nonisolated mutating func record(_ pair: Homa.CandidatePair, order: UInt64) {
         var group = groups[pair.keyArray] ?? Group(keyArray: pair.keyArray, latest: pair.value, counts: [:])
         let oldCount = group.counts[pair.value] ?? 0
         group.counts[pair.value] = oldCount == UInt64.max ? oldCount : oldCount + 1
