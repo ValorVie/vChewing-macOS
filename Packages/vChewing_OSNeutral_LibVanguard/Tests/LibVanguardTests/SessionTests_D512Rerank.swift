@@ -833,7 +833,11 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
   func test_SS_D512_A26_K4_Automatic(_ acceptKey: Int, _ enabled: Bool) async throws {
     _ = prepareD512SuggestFixture(mode: enabled ? 0 : 1)
     testHandler.prefs.d512SuggestionAcceptKey = acceptKey
-    testHandler.prefs.d512RerankMargin = 100
+    if enabled {
+      testHandler.prefs.d512RerankMargin = 100
+    } else {
+      testHandler.prefs.d512SuggestRerankMargin = 100
+    }
     typeSentenceOrCandidates("g4g4")
     await waitForD512()
     testHandler.prefs.useD512SentenceRerank = enabled
