@@ -126,6 +126,88 @@ final class CtlSettingsUITests {
     #expect(controls.allSatisfy { !$0.isEnabled })
   }
 
+  @Test("A28-Fix1 Cocoa field-editor commits and focus changes preserve full precision",
+        arguments: [false, true])
+  func testD512ParameterEditingPreservesPrecision(_ losesFocus: Bool) throws {
+    _ = NSApplication.shared
+    let defaults = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    defaults.setValue(true, forKeyPath: "values.UseD512SentenceRerank")
+    let pane = SettingsPanesCocoa.Candidates()
+    let fields = [NSTextField(), NSTextField(), NSTextField()]
+    let preset = NSPopUpButton()
+    pane.configureD512ParameterControls(
+      preset: preset, margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults
+    )
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 200),
+                          styleMask: [.titled], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let other = NSTextField(frame: NSRect(x: 20, y: 10, width: 180, height: 24))
+    window.contentView?.addSubview(other)
+    for (index, field) in fields.enumerated() {
+      field.frame = NSRect(x: 20, y: 50 + index * 40, width: 180, height: 24)
+      window.contentView?.addSubview(field)
+    }
+    defer { window.endEditing(for: nil); window.close() }
+    let inputs: [(String, Double)] = [
+      ("0.123456789", 0.123456789), ("0.0000001", 0.0000001),
+      ("9.9999999", 9.9999999), ("0.12345678901234567", 0.12345678901234567),
+    ]
+    for mode in [0, 1] {
+      defaults.setValue(mode, forKeyPath: "values.D512RerankMode")
+      let keys = mode == 1
+        ? ["D512SuggestRerankMargin", "D512SuggestRerankWeight", "D512SuggestRerankPersonalBonus"]
+        : ["D512RerankMargin", "D512RerankWeight", "D512RerankPersonalBonus"]
+      for locale in ["en_US", "de_DE"] {
+        for (field, key) in zip(fields, keys) {
+          let formatter = try #require(field.formatter as? NumberFormatter)
+          formatter.locale = Locale(identifier: locale)
+          for (input, expected) in inputs {
+            defaults.setValue(2.0, forKeyPath: "values.\(key)")
+            field.selectText(nil)
+            let editor = try #require(field.currentEditor() as? NSTextView)
+            editor.string = input.replacingOccurrences(of: ".", with: formatter.decimalSeparator)
+            if losesFocus {
+              #expect(window.makeFirstResponder(other))
+            } else {
+              editor.insertNewline(nil)
+            }
+            #expect(UserDefaults.current.double(forKey: key) == expected,
+                    "\(locale) \(key) input=\(input) blur=\(losesFocus)")
+            // A later action without an edit must preserve the original stored number too.
+            defaults.setValue(expected, forKeyPath: "values.\(key)")
+            let action = try #require(field.action)
+            field.sendAction(action, to: field.target)
+            #expect(UserDefaults.current.double(forKey: key) == expected)
+            window.endEditing(for: field)
+          }
+        }
+      }
+    }
+  }
+
+  @Test("A28-Fix1 Invalid numeric text never changes a parameter")
+  func testD512ParameterInvalidTextIsRejected() throws {
+    let defaults = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    defaults.setValue(true, forKeyPath: "values.UseD512SentenceRerank")
+    defaults.setValue(1, forKeyPath: "values.D512RerankMode")
+    let pane = SettingsPanesCocoa.Candidates()
+    let fields = [NSTextField(), NSTextField(), NSTextField()]
+    pane.configureD512ParameterControls(
+      preset: NSPopUpButton(), margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults
+    )
+    for (field, key) in zip(fields, ["D512SuggestRerankMargin", "D512SuggestRerankWeight", "D512SuggestRerankPersonalBonus"]) {
+      let formatter = try #require(field.formatter as? NumberFormatter)
+      formatter.locale = Locale(identifier: "en_US")
+      defaults.setValue(0.25, forKeyPath: "values.\(key)")
+      for input in ["-0.1", "10.0000004", "11", "", "NaN", "2abc", "1.2.3"] {
+        field.stringValue = input
+        let action = try #require(field.action)
+        field.sendAction(action, to: field.target)
+        #expect(UserDefaults.current.double(forKey: key) == 0.25, "Rejected: \(input)")
+      }
+    }
+  }
+
   @Test("SS-D512-A25-S6 The mode control follows the master switch")
   func testD512ModeRequiresMasterSwitch() throws {
     _ = try #require(UserDef(rawValue: "D512RerankMode"))

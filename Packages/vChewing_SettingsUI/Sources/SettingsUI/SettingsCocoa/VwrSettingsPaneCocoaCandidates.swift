@@ -334,7 +334,10 @@ extension SettingsPanesCocoa {
         formatter.numberStyle = .decimal
         formatter.minimum = 0
         formatter.maximum = 10
-        formatter.maximumFractionDigits = 6
+        // 17 significant digits round-trip a Double; the fractional limit also covers subnormal values.
+        formatter.usesSignificantDigits = true
+        formatter.maximumSignificantDigits = 17
+        formatter.maximumFractionDigits = 340
         field.formatter = formatter
         field.alignment = .right
         field.cell?.sendsActionOnEndEditing = true
@@ -398,8 +401,7 @@ extension SettingsPanesCocoa {
 
     @objc private func parameterDidSet(_ sender: NSTextField) {
       guard sender.isEnabled, let index = fields.firstIndex(of: sender),
-            let formatter = sender.formatter as? NumberFormatter,
-            let number = formatter.number(from: sender.stringValue),
+            let number = sender.objectValue as? NSNumber,
             number.doubleValue.isFinite, (0 ... 10).contains(number.doubleValue) else {
         refresh()
         return
