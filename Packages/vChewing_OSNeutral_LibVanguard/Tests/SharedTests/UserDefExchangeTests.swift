@@ -58,6 +58,29 @@ final class UserDefExchangeTests {
     #expect(!prefs.useD512SentenceRerank)
   }
 
+  @Test("A28-Fix1 Parameter setters persist without unrelated reload callbacks")
+  func testD512ParameterSettersDoNotReloadLexicons() {
+    var reloads = 0
+    let prefs = PrefMgr(didAskForSyncingLMPrefs: { reloads += 1 })
+    prefs.d512RerankWeight = 0.7
+    prefs.d512RerankMargin = 1.2
+    prefs.d512RerankPersonalBonus = 3.5
+    prefs.d512SuggestRerankWeight = 0.7
+    prefs.d512SuggestRerankMargin = 1.2
+    prefs.d512SuggestRerankPersonalBonus = 3.5
+    #expect(reloads == 0)
+    for (key, expected) in zip(
+      ["D512RerankWeight", "D512RerankMargin", "D512RerankPersonalBonus",
+       "D512SuggestRerankWeight", "D512SuggestRerankMargin", "D512SuggestRerankPersonalBonus"],
+      [0.7, 1.2, 3.5, 0.7, 1.2, 3.5]
+    ) {
+      #expect(UserDefaults.current.double(forKey: key) == expected)
+    }
+    // Existing mode changes must still request the original synchronization.
+    prefs.d512RerankMode = 1
+    #expect(reloads == 1)
+  }
+
   @Test
   func testD512SuggestionAcceptKeyDefaultsToTab() throws {
     let key = try #require(UserDef(rawValue: "D512SuggestionAcceptKey"))
