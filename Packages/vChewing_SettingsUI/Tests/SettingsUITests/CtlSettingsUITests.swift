@@ -60,7 +60,7 @@ final class CtlSettingsUITests {
     let margin = NSTextField(), weight = NSTextField(), bonus = NSTextField()
     let fields = [margin, weight, bonus]
     let controls: [NSControl] = [preset, margin, weight, bonus]
-    pane.configureD512ParameterControls(preset: preset, margin: margin, weight: weight, bonus: bonus, defaults: controller)
+    pane.configureD512ParameterControls(preset: preset, margin: margin, weight: weight, bonus: bonus, defaults: controller, isD512Available: true)
     #expect(controls.allSatisfy { !$0.isEnabled })
     set("UseD512SentenceRerank", true)
     #expect(controls.allSatisfy { $0.isEnabled })
@@ -136,7 +136,7 @@ final class CtlSettingsUITests {
     let fields = [NSTextField(), NSTextField(), NSTextField()]
     let preset = NSPopUpButton()
     pane.configureD512ParameterControls(
-      preset: preset, margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults
+      preset: preset, margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults, isD512Available: true
     )
     let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 200),
                           styleMask: [.titled], backing: .buffered, defer: false)
@@ -193,7 +193,7 @@ final class CtlSettingsUITests {
     let pane = SettingsPanesCocoa.Candidates()
     let fields = [NSTextField(), NSTextField(), NSTextField()]
     pane.configureD512ParameterControls(
-      preset: NSPopUpButton(), margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults
+      preset: NSPopUpButton(), margin: fields[0], weight: fields[1], bonus: fields[2], defaults: defaults, isD512Available: true
     )
     for (field, key) in zip(fields, ["D512SuggestRerankMargin", "D512SuggestRerankWeight", "D512SuggestRerankPersonalBonus"]) {
       let formatter = try #require(field.formatter as? NumberFormatter)
@@ -206,6 +206,24 @@ final class CtlSettingsUITests {
         #expect(UserDefaults.current.double(forKey: key) == 0.25, "Rejected: \(input)")
       }
     }
+  }
+
+  @Test("A28-Fix1 Unavailable D512 disables parameters even with a saved enabled master")
+  func testD512ParametersRequireAvailableModel() {
+    let defaults = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    defaults.setValue(true, forKeyPath: "values.UseD512SentenceRerank")
+    let pane = SettingsPanesCocoa.Candidates()
+    let preset = NSPopUpButton()
+    let margin = NSTextField(), weight = NSTextField(), bonus = NSTextField()
+    pane.configureD512ParameterControls(
+      preset: preset, margin: margin, weight: weight, bonus: bonus, defaults: defaults,
+      isD512Available: false
+    )
+    let controls: [NSControl] = [preset, margin, weight, bonus]
+    #expect(controls.allSatisfy { !$0.isEnabled })
+    defaults.setValue(false, forKeyPath: "values.UseD512SentenceRerank")
+    defaults.setValue(true, forKeyPath: "values.UseD512SentenceRerank")
+    #expect(controls.allSatisfy { !$0.isEnabled })
   }
 
   @Test("SS-D512-A25-S6 The mode control follows the master switch")

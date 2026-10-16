@@ -146,7 +146,7 @@ extension SettingsPanesCocoa {
             ) { renderable in
               self.configureD512AcceptKeyControl(renderable.currentControl)
             }
-            makeD512ParameterView()
+            makeD512ParameterView(isD512Available: d512Reason == nil)
             if let reason = d512Reason {
               NSTextField(wrappingLabelWithString: reason)
             }
@@ -218,19 +218,21 @@ extension SettingsPanesCocoa {
     #if compiler(>=6.4)
       func configureD512ParameterControls(
         preset: NSPopUpButton, margin: NSTextField, weight: NSTextField, bonus: NSTextField,
-        defaults: NSUserDefaultsController = .shared
+        defaults: NSUserDefaultsController = .shared, isD512Available: Bool
       ) {
         d512ParameterControls = D512ParameterControls(
-          preset: preset, fields: [margin, weight, bonus], defaults: defaults
+          preset: preset, fields: [margin, weight, bonus], defaults: defaults, isD512Available: isD512Available
         )
       }
 
       private var d512ParameterControls: D512ParameterControls?
 
-      private func makeD512ParameterView() -> NSView? {
+      private func makeD512ParameterView(isD512Available: Bool) -> NSView? {
         let preset = NSPopUpButton()
         let margin = NSTextField(), weight = NSTextField(), bonus = NSTextField()
-        configureD512ParameterControls(preset: preset, margin: margin, weight: weight, bonus: bonus)
+        configureD512ParameterControls(
+          preset: preset, margin: margin, weight: weight, bonus: bonus, isD512Available: isD512Available
+        )
         return NSStackView.build(.vertical) {
           NSStackView.build(.horizontal) {
             "i18n:D512.Preset.title".makeNSLabel()
@@ -317,7 +319,7 @@ extension SettingsPanesCocoa {
   /// NSUserDefaultsController 的 KVO 讓模式切換與外部偏好更新同步反映於同一組欄位。
   @MainActor
   private final class D512ParameterControls: NSObject {
-    init(preset: NSPopUpButton, fields: [NSTextField], defaults: NSUserDefaultsController) {
+    init(preset: NSPopUpButton, fields: [NSTextField], defaults: NSUserDefaultsController, isD512Available: Bool) {
       self.preset = preset
       self.fields = fields
       self.defaults = defaults
@@ -345,7 +347,11 @@ extension SettingsPanesCocoa {
         field.action = #selector(parameterDidSet(_:))
       }
       for control in ([preset] as [NSControl]) + fields {
-        control.bind(.enabled, to: defaults, withKeyPath: "values.\(UserDef.kUseD512SentenceRerank.rawValue)")
+        if isD512Available {
+          control.bind(.enabled, to: defaults, withKeyPath: "values.\(UserDef.kUseD512SentenceRerank.rawValue)")
+        } else {
+          control.isEnabled = false
+        }
       }
       for key in observedKeys {
         defaults.addObserver(self, forKeyPath: "values.\(key)", options: .new, context: nil)

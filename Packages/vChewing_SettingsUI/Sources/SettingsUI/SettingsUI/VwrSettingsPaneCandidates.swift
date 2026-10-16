@@ -81,7 +81,7 @@
             }
             .disabled(!useD512SentenceRerank || d512RerankMode != 1)
             D512ParameterSettings(suggestMode: d512RerankMode == 1)
-              .disabled(!useD512SentenceRerank)
+              .disabled(!useD512SentenceRerank || d512UnavailableReason != nil)
             if let reason = d512UnavailableReason {
               Text(reason).font(.footnote).foregroundStyle(.secondary)
             }
