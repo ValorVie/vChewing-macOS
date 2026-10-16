@@ -207,6 +207,21 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kD512RerankPersonalBonus)
   public var d512RerankPersonalBonus: Double
 
+  @AppProperty(userDef: .kD512SuggestRerankWeight)
+  public var d512SuggestRerankWeight: Double {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
+  @AppProperty(userDef: .kD512SuggestRerankMargin)
+  public var d512SuggestRerankMargin: Double {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
+  @AppProperty(userDef: .kD512SuggestRerankPersonalBonus)
+  public var d512SuggestRerankPersonalBonus: Double {
+    didSet { didAskForSyncingLMPrefs?() }
+  }
+
   @AppProperty(userDef: .kEnforceETenDOSCandidateSequence)
   public var enforceETenDOSCandidateSequence: Bool
 

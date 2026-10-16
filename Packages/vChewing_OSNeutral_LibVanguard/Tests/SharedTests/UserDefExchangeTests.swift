@@ -24,6 +24,40 @@ final class UserDefExchangeTests {
 
   // MARK: Internal
 
+  @Test("A28-P2 Suggestion defaults are independent of persisted automatic parameters")
+  func testD512SuggestParameterDefaults() throws {
+    let automatic = ["D512RerankWeight", "D512RerankMargin", "D512RerankPersonalBonus"]
+    for (name, value) in zip(automatic, [1.25, 0.75, 4.0]) {
+      UserDefaults.current.set(value, forKey: name)
+    }
+    let prefs = PrefMgr()
+    #expect(prefs.d512RerankWeight == 1.25)
+    #expect(prefs.d512RerankMargin == 0.75)
+    #expect(prefs.d512RerankPersonalBonus == 4)
+    for (name, expected) in zip(automatic, [0.5, 0.5, 2.0]) {
+      #expect(try #require(UserDef(rawValue: name)).doubleDefaultValue == expected)
+    }
+    for (name, expected) in zip(
+      ["D512SuggestRerankWeight", "D512SuggestRerankMargin", "D512SuggestRerankPersonalBonus"],
+      [0.5, 2.0, 2.0]
+    ) {
+      let key = try #require(UserDef(rawValue: name))
+      #expect(key.doubleDefaultValue == expected)
+      #expect(UserDefaults.current.double(forKey: name) == expected)
+      let result = UserDef.importFromDictionary([name: 3.25])
+      #expect(result.failures.isEmpty)
+      #expect(UserDefaults.current.double(forKey: name) == 3.25)
+    }
+    #expect(prefs.d512RerankWeight == 1.25)
+    #expect(prefs.d512RerankMargin == 0.75)
+    #expect(prefs.d512RerankPersonalBonus == 4)
+    #expect(prefs.d512SuggestRerankWeight == 3.25)
+    #expect(prefs.d512SuggestRerankMargin == 3.25)
+    #expect(prefs.d512SuggestRerankPersonalBonus == 3.25)
+    #expect(prefs.d512RerankMode == 0)
+    #expect(!prefs.useD512SentenceRerank)
+  }
+
   @Test
   func testD512SuggestionAcceptKeyDefaultsToTab() throws {
     let key = try #require(UserDef(rawValue: "D512SuggestionAcceptKey"))

@@ -95,6 +95,9 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kD512RerankWeight = "D512RerankWeight"
   case kD512RerankMargin = "D512RerankMargin"
   case kD512RerankPersonalBonus = "D512RerankPersonalBonus"
+  case kD512SuggestRerankWeight = "D512SuggestRerankWeight"
+  case kD512SuggestRerankMargin = "D512SuggestRerankMargin"
+  case kD512SuggestRerankPersonalBonus = "D512SuggestRerankPersonalBonus"
   case kAutoCorrectReadingCombination = "AutoCorrectReadingCombination"
   case kReadingNarrationCoverage = "ReadingNarrationCoverage"
   case kAlsoConfirmAssociatedCandidatesByEnter = "AlsoConfirmAssociatedCandidatesByEnter"
@@ -734,8 +737,8 @@ extension UserDef {
     case .kD512RerankMode: return .integer(0)
     case .kD512SuggestionAcceptKey: return .integer(0)
     case .kLogD512Calibration: return .bool(false)
-    case .kD512RerankWeight, .kD512RerankMargin: return .double(0.5)
-    case .kD512RerankPersonalBonus: return .double(2)
+    case .kD512RerankWeight, .kD512RerankMargin, .kD512SuggestRerankWeight: return .double(0.5)
+    case .kD512RerankPersonalBonus, .kD512SuggestRerankMargin, .kD512SuggestRerankPersonalBonus: return .double(2)
     case .kAutoCorrectReadingCombination: return .bool(true)
     case .kReadingNarrationCoverage: return .integer(0)
     case .kAlsoConfirmAssociatedCandidatesByEnter: return .bool(false)
@@ -1216,7 +1219,8 @@ extension UserDef {
         2: "i18n:UserDef.kD512SuggestionAcceptKey.option.2",
       ]
     )
-    case .kD512RerankWeight, .kD512RerankMargin, .kD512RerankPersonalBonus: return nil
+    case .kD512RerankWeight, .kD512RerankMargin, .kD512RerankPersonalBonus,
+         .kD512SuggestRerankWeight, .kD512SuggestRerankMargin, .kD512SuggestRerankPersonalBonus: return nil
     case .kAutoCorrectReadingCombination: return .init(
         userDef: self,
         shortTitle: "i18n:UserDef.kAutoCorrectReadingCombination.shortTitle",
