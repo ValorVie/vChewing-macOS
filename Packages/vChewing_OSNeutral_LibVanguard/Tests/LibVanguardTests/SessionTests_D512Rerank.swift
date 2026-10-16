@@ -522,7 +522,11 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     let url = prepareD512SuggestFixture(mode: mode)
     testHandler.prefs.d512SuggestionAcceptKey = acceptKey
     #expect(UserDef(rawValue: "D512RerankMode")?.intDefaultValue == 0)
-    testHandler.prefs.d512RerankMargin = 100
+    if mode == 1 {
+      testHandler.prefs.d512SuggestRerankMargin = 100
+    } else {
+      testHandler.prefs.d512RerankMargin = 100
+    }
     typeSentenceOrCandidates("g4g4")
     await waitForD512()
     #expect(testSession.state.displayedText == "試試")
@@ -607,7 +611,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
   @Test("SS-D512-A25-R1-002 Split suggestions accept atomically", arguments: [false, true])
   func test_SS_D512_A25_R1_002_SplitChanges(_ missingTail: Bool) async throws {
     let url = prepareD512SuggestFixture()
-    testHandler.prefs.d512RerankWeight = 3
+    testHandler.prefs.d512SuggestRerankWeight = 3
     let assembler = Homa.Assembler(gramQuerier: { query in
       let keys = query.map(\.first)
       if keys.count == 2 { return [.init(keyArray: keys, current: "試試", probability: -1)] }
@@ -719,7 +723,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
         arguments: ["none", "failed", "shift", "candidates"])
   func test_SS_D512_A26_K1_Tab(_ action: String) async throws {
     _ = prepareD512SuggestFixture()
-    if action != "failed" { testHandler.prefs.d512RerankMargin = 100 }
+    if action != "failed" { testHandler.prefs.d512SuggestRerankMargin = 100 }
     typeSentenceOrCandidates("g4g4")
     await waitForD512()
     if action == "failed" {
@@ -761,7 +765,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
   func test_SS_D512_A26_K2_ControlTab(_ action: String) async throws {
     _ = prepareD512SuggestFixture()
     testHandler.prefs.d512SuggestionAcceptKey = 1
-    if action == "none" { testHandler.prefs.d512RerankMargin = 100 }
+    if action == "none" { testHandler.prefs.d512SuggestRerankMargin = 100 }
     typeSentenceOrCandidates("g4g4")
     await waitForD512()
     if action == "failed" { try protectD512DefaultForFailedAcceptance() }
@@ -789,7 +793,7 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
     testHandler.prefs.d512SuggestionAcceptKey = 2
     testClientProxy.textOrientation = vertical ? 0 : 1
     testSession.updateVerticalTypingStatus()
-    if action == "none" { testHandler.prefs.d512RerankMargin = 100 }
+    if action == "none" { testHandler.prefs.d512SuggestRerankMargin = 100 }
     typeSentenceOrCandidates("g4g4")
     if action == "middle" {
       testHandler.assembler.cursor = 1
@@ -850,6 +854,66 @@ extension LibVanguardTestsRoot.InputHandlerTests.Session {
       .init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "試試"), atSegment: 0, segLength: 2,
       isExplicitlyOverridden: true, perceptionHandler: { _ in }
     )
+  }
+
+  @Test("A28-P3 Each mode uses only its own weight, margin and personal bonus",
+        arguments: [0, 1], ["weight", "margin", "bonus"])
+  func test_SS_D512_A28_ModeParameters(_ mode: Int, _ field: String) async throws {
+    let url = prepareD512SuggestFixture(mode: mode)
+    let automatic = ["D512RerankWeight", "D512RerankMargin", "D512RerankPersonalBonus"]
+    let suggest = ["D512SuggestRerankWeight", "D512SuggestRerankMargin", "D512SuggestRerankPersonalBonus"]
+    let own = mode == 1 ? suggest : automatic
+    let other = mode == 1 ? automatic : suggest
+    let values: [Double] = field == "weight" ? [0.1, 0.2, 0] : field == "margin" ? [0.5, 10, 0] : [0.5, 0.2, 8]
+    for (key, value) in zip(own, values) { UserDefaults.current.set(value, forKey: key) }
+    for (key, value) in zip(other, [3.0, 0.2, 0.0]) { UserDefaults.current.set(value, forKey: key) }
+    if field == "bonus" {
+      testHandler.currentLM.candidateRanking.recordCommittedCandidate(
+        .init(keyArray: ["ㄕˋ", "ㄕˋ"], value: "逝世")
+      )
+    }
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == (field == "bonus" ? "逝世" : "試試"))
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion == nil)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["weight"] as? Double == values[0])
+    #expect(row["margin"] as? Double == values[1])
+    #expect(row["bonus"] as? Double == values[2])
+    #expect(row["mode"] as? String == (mode == 1 ? "suggest" : "automatic"))
+
+    testSession.switchState(.ofAbortion())
+    for (key, value) in zip(own, [0.5, 0.2, 0.0]) { UserDefaults.current.set(value, forKey: key) }
+    for (key, value) in zip(other, [0.0, 10.0, 8.0]) { UserDefaults.current.set(value, forKey: key) }
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == (mode == 1 ? (field == "bonus" ? "逝世" : "試試") : "世事"))
+    #expect((testHandler.d512SentenceRerank.pendingSuggestion != nil) == (mode == 1))
+    let changed = try #require(d512CalibrationRows(url).last)
+    #expect(changed["weight"] as? Double == 0.5)
+    #expect(changed["margin"] as? Double == 0.2)
+    #expect(changed["bonus"] as? Double == 0)
+    #expect(changed["mode"] as? String == (mode == 1 ? "suggest" : "automatic"))
+  }
+
+  @Test("A28-P3 Unset suggestion parameters use margin two despite persisted automatic values")
+  func test_SS_D512_A28_SuggestDefaults() async throws {
+    let url = prepareD512SuggestFixture()
+    for key in ["D512SuggestRerankWeight", "D512SuggestRerankMargin", "D512SuggestRerankPersonalBonus"] {
+      UserDefaults.current.removeObject(forKey: key)
+    }
+    testHandler.prefs.d512RerankWeight = 0
+    testHandler.prefs.d512RerankMargin = 100
+    testHandler.prefs.d512RerankPersonalBonus = 10
+    typeSentenceOrCandidates("g4g4")
+    await waitForD512()
+    #expect(testSession.state.displayedText == "試試")
+    #expect(testHandler.d512SentenceRerank.pendingSuggestion != nil)
+    let row = try #require(d512CalibrationRows(url).last)
+    #expect(row["weight"] as? Double == 0.5)
+    #expect(row["margin"] as? Double == 2)
+    #expect(row["bonus"] as? Double == 2)
+    #expect(row["mode"] as? String == "suggest")
   }
 
   private func prepareD512SuggestFixture(mode: Int = 1) -> URL {

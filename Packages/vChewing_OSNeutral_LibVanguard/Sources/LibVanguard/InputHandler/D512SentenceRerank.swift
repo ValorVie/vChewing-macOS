@@ -315,9 +315,10 @@
       }
       let token = generation
       let context = context
-      let w = handler.prefs.d512RerankWeight, tau = handler.prefs.d512RerankMargin
-      let b = handler.prefs.d512RerankPersonalBonus
       let suggestMode = handler.prefs.d512RerankMode == 1
+      let w = suggestMode ? handler.prefs.d512SuggestRerankWeight : handler.prefs.d512RerankWeight
+      let tau = suggestMode ? handler.prefs.d512SuggestRerankMargin : handler.prefs.d512RerankMargin
+      let b = suggestMode ? handler.prefs.d512SuggestRerankPersonalBonus : handler.prefs.d512RerankPersonalBonus
       let keys = assembler.keys
       let completion: @MainActor @Sendable (Evaluation?) -> Void = { [weak self, weak handler] evaluation in
           guard let self else { return }
