@@ -648,3 +648,13 @@
 "i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "Right arrow (sentence end)";
+
+"i18n:D512.Preset.title" = "Suggestion threshold";
+"i18n:D512.Preset.option.0" = "Conservative";
+"i18n:D512.Preset.option.1" = "Balanced";
+"i18n:D512.Preset.option.2" = "Aggressive";
+"i18n:D512.Preset.option.3" = "Custom";
+"i18n:D512.Parameter.margin" = "Threshold τ";
+"i18n:D512.Parameter.weight" = "Model weight w";
+"i18n:D512.Parameter.bonus" = "Personal learning bonus b";
+"i18n:D512.Preset.description" = "A higher τ produces fewer suggestions or automatic corrections.";

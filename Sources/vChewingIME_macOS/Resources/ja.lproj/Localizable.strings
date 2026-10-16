@@ -648,3 +648,13 @@
 "i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "右方向キー（文末）";
+
+"i18n:D512.Preset.title" = "提案のしきい値";
+"i18n:D512.Preset.option.0" = "慎重";
+"i18n:D512.Preset.option.1" = "バランス";
+"i18n:D512.Preset.option.2" = "積極";
+"i18n:D512.Preset.option.3" = "カスタム";
+"i18n:D512.Parameter.margin" = "しきい値 τ";
+"i18n:D512.Parameter.weight" = "モデルの重み w";
+"i18n:D512.Parameter.bonus" = "個人学習の加点 b";
+"i18n:D512.Preset.description" = "τ を大きくすると、提案または自動修正が少なくなります。";

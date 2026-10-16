@@ -648,3 +648,13 @@
 "i18n:UserDef.kD512SuggestionAcceptKey.option.0" = "Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.1" = "Ctrl+Tab";
 "i18n:UserDef.kD512SuggestionAcceptKey.option.2" = "右方向鍵（句尾）";
+
+"i18n:D512.Preset.title" = "建議門檻";
+"i18n:D512.Preset.option.0" = "保守";
+"i18n:D512.Preset.option.1" = "平衡";
+"i18n:D512.Preset.option.2" = "積極";
+"i18n:D512.Preset.option.3" = "自訂";
+"i18n:D512.Parameter.margin" = "門檻 τ";
+"i18n:D512.Parameter.weight" = "模型權重 w";
+"i18n:D512.Parameter.bonus" = "個人學習加分 b";
+"i18n:D512.Preset.description" = "τ 越大，建議或自動改句越少。";

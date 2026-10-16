@@ -80,6 +80,8 @@
               SettingsUIHost.shared.syncLMPrefs()
             }
             .disabled(!useD512SentenceRerank || d512RerankMode != 1)
+            D512ParameterSettings(suggestMode: d512RerankMode == 1)
+              .disabled(!useD512SentenceRerank)
             if let reason = d512UnavailableReason {
               Text(reason).font(.footnote).foregroundStyle(.secondary)
             }
@@ -143,6 +145,66 @@
     @AppStorage(wrappedValue: false, UserDef.kCandidateWindowShowOnlyOneLine.rawValue)
     private var candidateWindowShowOnlyOneLine: Bool
   }
+
+  #if compiler(>=6.4)
+    @available(macOS 14, *)
+    private struct D512ParameterSettings: View {
+      let suggestMode: Bool
+
+      var body: some View {
+        Picker("i18n:D512.Preset.title", selection: preset) {
+          ForEach(D512RerankPreset.allCases, id: \.rawValue) { item in
+            Text("i18n:D512.Preset.option.\(item.rawValue)".i18n).tag(item)
+          }
+        }
+        TextField("i18n:D512.Parameter.margin", value: parameter(suggestMode ? $suggestMargin : $automaticMargin), format: .number)
+        TextField("i18n:D512.Parameter.weight", value: parameter(suggestMode ? $suggestWeight : $automaticWeight), format: .number)
+        TextField("i18n:D512.Parameter.bonus", value: parameter(suggestMode ? $suggestBonus : $automaticBonus), format: .number)
+        Text("i18n:D512.Preset.description").font(.footnote).foregroundStyle(.secondary)
+      }
+
+      private var preset: Binding<D512RerankPreset> {
+        .init(get: {
+          .matching(weight: suggestMode ? suggestWeight : automaticWeight,
+                    margin: suggestMode ? suggestMargin : automaticMargin,
+                    bonus: suggestMode ? suggestBonus : automaticBonus, suggestMode: suggestMode)
+        }, set: { selection in
+          guard let values = selection.parameters(suggestMode: suggestMode) else { return }
+          if suggestMode {
+            suggestMargin = values.margin
+            suggestWeight = values.weight
+            suggestBonus = values.bonus
+          } else {
+            automaticMargin = values.margin
+            automaticWeight = values.weight
+            automaticBonus = values.bonus
+          }
+          SettingsUIHost.shared.syncLMPrefs()
+        })
+      }
+
+      private func parameter(_ value: Binding<Double>) -> Binding<Double> {
+        .init(get: { value.wrappedValue }, set: { number in
+          guard number.isFinite, (0 ... 10).contains(number) else { return }
+          value.wrappedValue = number
+          SettingsUIHost.shared.syncLMPrefs()
+        })
+      }
+
+      @AppStorage(wrappedValue: UserDef.kD512RerankMargin.doubleDefaultValue, UserDef.kD512RerankMargin.rawValue)
+      private var automaticMargin: Double
+      @AppStorage(wrappedValue: UserDef.kD512RerankWeight.doubleDefaultValue, UserDef.kD512RerankWeight.rawValue)
+      private var automaticWeight: Double
+      @AppStorage(wrappedValue: UserDef.kD512RerankPersonalBonus.doubleDefaultValue, UserDef.kD512RerankPersonalBonus.rawValue)
+      private var automaticBonus: Double
+      @AppStorage(wrappedValue: UserDef.kD512SuggestRerankMargin.doubleDefaultValue, UserDef.kD512SuggestRerankMargin.rawValue)
+      private var suggestMargin: Double
+      @AppStorage(wrappedValue: UserDef.kD512SuggestRerankWeight.doubleDefaultValue, UserDef.kD512SuggestRerankWeight.rawValue)
+      private var suggestWeight: Double
+      @AppStorage(wrappedValue: UserDef.kD512SuggestRerankPersonalBonus.doubleDefaultValue, UserDef.kD512SuggestRerankPersonalBonus.rawValue)
+      private var suggestBonus: Double
+    }
+  #endif
 
   // MARK: - VwrSettingsPaneCandidates_Previews
 

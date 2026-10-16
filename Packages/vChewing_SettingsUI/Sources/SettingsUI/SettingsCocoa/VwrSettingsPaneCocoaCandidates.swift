@@ -146,6 +146,7 @@ extension SettingsPanesCocoa {
             ) { renderable in
               self.configureD512AcceptKeyControl(renderable.currentControl)
             }
+            makeD512ParameterView()
             if let reason = d512Reason {
               NSTextField(wrappingLabelWithString: reason)
             }
@@ -215,6 +216,38 @@ extension SettingsPanesCocoa {
     }
 
     #if compiler(>=6.4)
+      func configureD512ParameterControls(
+        preset: NSPopUpButton, margin: NSTextField, weight: NSTextField, bonus: NSTextField,
+        defaults: NSUserDefaultsController = .shared
+      ) {
+        d512ParameterControls = D512ParameterControls(
+          preset: preset, fields: [margin, weight, bonus], defaults: defaults
+        )
+      }
+
+      private var d512ParameterControls: D512ParameterControls?
+
+      private func makeD512ParameterView() -> NSView? {
+        let preset = NSPopUpButton()
+        let margin = NSTextField(), weight = NSTextField(), bonus = NSTextField()
+        configureD512ParameterControls(preset: preset, margin: margin, weight: weight, bonus: bonus)
+        return NSStackView.build(.vertical) {
+          NSStackView.build(.horizontal) {
+            "i18n:D512.Preset.title".makeNSLabel()
+            NSView()
+            preset
+          }
+          for (key, field) in zip(["margin", "weight", "bonus"], [margin, weight, bonus]) {
+            NSStackView.build(.horizontal) {
+              "i18n:D512.Parameter.\(key)".makeNSLabel()
+              NSView()
+              field.makeSimpleConstraint(.width, relation: .equal, value: 100)
+            }
+          }
+          NSTextField(wrappingLabelWithString: "i18n:D512.Preset.description".i18n)
+        }
+      }
+
       func configureD512AcceptKeyControl(
         _ control: NSControl?, defaults: NSUserDefaultsController = .shared
       ) {
@@ -277,5 +310,102 @@ extension SettingsPanesCocoa {
   @available(macOS 14.0, *)
   #Preview(traits: .fixedLayout(width: 600, height: 768)) {
     SettingsPanesCocoa.Candidates()
+  }
+#endif
+
+#if compiler(>=6.4)
+  /// NSUserDefaultsController 的 KVO 讓模式切換與外部偏好更新同步反映於同一組欄位。
+  @MainActor
+  private final class D512ParameterControls: NSObject {
+    init(preset: NSPopUpButton, fields: [NSTextField], defaults: NSUserDefaultsController) {
+      self.preset = preset
+      self.fields = fields
+      self.defaults = defaults
+      super.init()
+      preset.addItems(withTitles: D512RerankPreset.allCases.map {
+        "i18n:D512.Preset.option.\($0.rawValue)".i18n
+      })
+      preset.target = self
+      preset.action = #selector(presetDidSet(_:))
+      preset.setAccessibilityLabel("i18n:D512.Preset.title".i18n)
+      for (field, name) in zip(fields, ["margin", "weight", "bonus"]) {
+        field.setAccessibilityLabel("i18n:D512.Parameter.\(name)".i18n)
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimum = 0
+        formatter.maximum = 10
+        formatter.maximumFractionDigits = 6
+        field.formatter = formatter
+        field.alignment = .right
+        field.cell?.sendsActionOnEndEditing = true
+        field.target = self
+        field.action = #selector(parameterDidSet(_:))
+      }
+      for control in ([preset] as [NSControl]) + fields {
+        control.bind(.enabled, to: defaults, withKeyPath: "values.\(UserDef.kUseD512SentenceRerank.rawValue)")
+      }
+      for key in observedKeys {
+        defaults.addObserver(self, forKeyPath: "values.\(key)", options: .new, context: nil)
+      }
+      refresh()
+    }
+
+    isolated deinit {
+      for key in observedKeys { defaults.removeObserver(self, forKeyPath: "values.\(key)") }
+    }
+
+    private let preset: NSPopUpButton
+    private let fields: [NSTextField]
+    private let defaults: NSUserDefaultsController
+    private let automatic: [UserDef] = [.kD512RerankMargin, .kD512RerankWeight, .kD512RerankPersonalBonus]
+    private let suggest: [UserDef] = [.kD512SuggestRerankMargin, .kD512SuggestRerankWeight, .kD512SuggestRerankPersonalBonus]
+
+    private var observedKeys: [String] { [UserDef.kD512RerankMode.rawValue] + (automatic + suggest).map(\.rawValue) }
+    private var suggestMode: Bool { (defaults.value(forKeyPath: "values.\(UserDef.kD512RerankMode.rawValue)") as? NSNumber)?.intValue == 1 }
+    private var keys: [UserDef] { suggestMode ? suggest : automatic }
+
+    private func refresh() {
+      let values = keys.map { key in
+        (defaults.value(forKeyPath: "values.\(key.rawValue)") as? NSNumber)?.doubleValue ?? key.doubleDefaultValue
+      }
+      for (field, value) in zip(fields, values) { field.doubleValue = value }
+      preset.selectItem(at: D512RerankPreset.matching(
+        weight: values[1], margin: values[0], bonus: values[2], suggestMode: suggestMode
+      ).rawValue)
+    }
+
+    nonisolated override func observeValue(
+      forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?,
+      context: UnsafeMutableRawPointer?
+    ) {
+      // 這個 controller 與所有 AppKit 控制項都在 main actor 使用。
+      MainActor.assumeIsolated { refresh() }
+    }
+
+    @objc private func presetDidSet(_: NSPopUpButton) {
+      guard preset.isEnabled,
+            let selection = D512RerankPreset(rawValue: preset.indexOfSelectedItem),
+            let values = selection.parameters(suggestMode: suggestMode) else {
+        refresh()
+        return
+      }
+      let activeKeys = keys
+      for (key, value) in zip(activeKeys, [values.margin, values.weight, values.bonus]) {
+        defaults.setValue(value, forKeyPath: "values.\(key.rawValue)")
+      }
+      SettingsUIHost.shared.syncLMPrefs()
+    }
+
+    @objc private func parameterDidSet(_ sender: NSTextField) {
+      guard sender.isEnabled, let index = fields.firstIndex(of: sender),
+            let formatter = sender.formatter as? NumberFormatter,
+            let number = formatter.number(from: sender.stringValue),
+            number.doubleValue.isFinite, (0 ... 10).contains(number.doubleValue) else {
+        refresh()
+        return
+      }
+      defaults.setValue(number, forKeyPath: "values.\(keys[index].rawValue)")
+      SettingsUIHost.shared.syncLMPrefs()
+    }
   }
 #endif

@@ -44,6 +44,88 @@ final class CtlSettingsUITests {
     #expect(CtlSettingsUI.shared?.window?.contentView == nil)
   }
 
+  @Test("A28-P4 Cocoa presets, fields and mode changes share only the active parameters")
+  func testD512ParameterControls() throws {
+    let controller = NSUserDefaultsController(defaults: UserDefaults.current, initialValues: nil)
+    let automatic = ["D512RerankMargin", "D512RerankWeight", "D512RerankPersonalBonus"]
+    let suggest = ["D512SuggestRerankMargin", "D512SuggestRerankWeight", "D512SuggestRerankPersonalBonus"]
+    func set(_ name: String, _ value: Any) { controller.setValue(value, forKeyPath: "values.\(name)") }
+    func value(_ name: String) -> Double { (controller.value(forKeyPath: "values.\(name)") as? NSNumber)?.doubleValue ?? -1 }
+    set("UseD512SentenceRerank", false)
+    set("D512RerankMode", 1)
+    for (key, number) in zip(automatic, [0.5, 0.5, 2.0]) { set(key, number) }
+    for (key, number) in zip(suggest, [2.0, 0.5, 2.0]) { set(key, number) }
+    let pane = SettingsPanesCocoa.Candidates()
+    let preset = NSPopUpButton()
+    let margin = NSTextField(), weight = NSTextField(), bonus = NSTextField()
+    let fields = [margin, weight, bonus]
+    let controls: [NSControl] = [preset, margin, weight, bonus]
+    pane.configureD512ParameterControls(preset: preset, margin: margin, weight: weight, bonus: bonus, defaults: controller)
+    #expect(controls.allSatisfy { !$0.isEnabled })
+    set("UseD512SentenceRerank", true)
+    #expect(controls.allSatisfy { $0.isEnabled })
+    #expect(preset.numberOfItems == 4)
+    #expect(preset.indexOfSelectedItem == 1)
+    #expect(fields.map(\.doubleValue) == [2, 0.5, 2])
+    func act(_ control: NSControl) throws {
+      let action = try #require(control.action)
+      _ = try #require(control.target)
+      control.sendAction(action, to: control.target)
+    }
+    for (index, tau) in [(0, 3.0), (1, 2.0), (2, 1.0)] {
+      preset.selectItem(at: index)
+      try act(preset)
+      #expect(suggest.map(value) == [tau, 0.5, 2])
+      #expect(automatic.map(value) == [0.5, 0.5, 2])
+    }
+    for (index, number) in [(0, 4.5), (1, 0.7), (2, 3.0)] {
+      fields[index].doubleValue = number
+      try act(fields[index])
+      #expect(value(suggest[index]) == number)
+      #expect(preset.indexOfSelectedItem == 3)
+      preset.selectItem(at: 1)
+      try act(preset)
+    }
+    preset.selectItem(at: 3)
+    try act(preset)
+    #expect(suggest.map(value) == [2, 0.5, 2])
+    #expect(preset.indexOfSelectedItem == 1)
+    set("D512RerankMode", 0)
+    #expect(fields.map(\.doubleValue) == [0.5, 0.5, 2])
+    for (index, tau) in [(0, 1.0), (1, 0.5), (2, 0.2)] {
+      preset.selectItem(at: index)
+      try act(preset)
+      #expect(automatic.map(value) == [tau, 0.5, 2])
+      #expect(suggest.map(value) == [2, 0.5, 2])
+    }
+    // NumberFormatter handles normal editing; the action also rejects invalid pasted/programmatic values.
+    for (index, field) in fields.enumerated() {
+      let formatter = try #require(field.formatter as? NumberFormatter)
+      #expect(formatter.minimum == 0 && formatter.maximum == 10)
+      let previous = value(automatic[index])
+      for invalid in [-0.1, 10.1] {
+        field.doubleValue = invalid
+        try act(field)
+        #expect(value(automatic[index]) == previous)
+        #expect(field.doubleValue == previous)
+      }
+      for valid in [0.0, 10.0, 0.25] {
+        field.doubleValue = valid
+        try act(field)
+        #expect(value(automatic[index]) == valid)
+        #expect(preset.indexOfSelectedItem == 3)
+      }
+    }
+    set("D512RerankMode", 1)
+    #expect(fields.map(\.doubleValue) == [2, 0.5, 2])
+    #expect(preset.indexOfSelectedItem == 1)
+    set("D512SuggestRerankWeight", 0.9)
+    #expect(weight.doubleValue == 0.9)
+    #expect(preset.indexOfSelectedItem == 3)
+    set("UseD512SentenceRerank", false)
+    #expect(controls.allSatisfy { !$0.isEnabled })
+  }
+
   @Test("SS-D512-A25-S6 The mode control follows the master switch")
   func testD512ModeRequiresMasterSwitch() throws {
     _ = try #require(UserDef(rawValue: "D512RerankMode"))
